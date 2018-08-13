@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-08-07 16:15:48 jpdur"
+//                     Time-stamp: "2018-08-13 11:44:36 jpdur"
 // ------------------------------------------------------------------------------
 
 LIBNAME USER ".";
@@ -22,10 +22,11 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "       FundIssuer.fund as IssuerFund, ";
 %LET SQLQUERY = %SQLQUERY + "       CieIssuer.name as IssuerCie, ";
 %LET SQLQUERY = %SQLQUERY + "       y.* ";
-%LET SQLQUERY = %SQLQUERY + "  from (select ins.shortname, ";
+%LET SQLQUERY = %SQLQUERY + "  from (select ins.shortname as InstrumentName, ";
 %LET SQLQUERY = %SQLQUERY + "               ins2.shortname  as IIName4Search, ";
-%LET SQLQUERY = %SQLQUERY + "               ins2.investment, ";
+%LET SQLQUERY = %SQLQUERY + "               ins2.investment, ";          
 %LET SQLQUERY = %SQLQUERY + "               OpenList.*, ";
+%LET SQLQUERY = %SQLQUERY + "               ins.iqregionid as RegionIQID, ";
 %LET SQLQUERY = %SQLQUERY + "               admrole.name    as Region, ";
 %LET SQLQUERY = %SQLQUERY + "               invest.firm, ";
 %LET SQLQUERY = %SQLQUERY + "               invest.fund, ";
