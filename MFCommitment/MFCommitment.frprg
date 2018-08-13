@@ -1,0 +1,50 @@
+// ------------------------------------------------------------------------------
+//                     Author    : eFront-BP2S
+//                     Time-stamp: "2018-08-09 17:11:19 jpdur"
+// ------------------------------------------------------------------------------
+
+LIBNAME USER ".";
+
+// Use the region as a parameter ==> Default region "Generic Region #4" with the max number of records
+%PARAM REGION_IQID 	   LABEL="Region" INFORMAT="??PICKID(ADMROLE;NAME)" DEFAULT="00C148A60D2541F4A6DF45164B06983A" ;
+%PARAM POSITION_DATE   LABEL="Position Date" TYPE=DATE   DEFAULT="31/12/2017" ;
+
+// Debug Date
+// PROC PRINT; PUT "to_date('" & Format(%POSITION_DATE,"d/M/yyyy") & "','DD/MM/YYYY') as TradeDate, "; RUN;
+
+// Let's Add the USERID of the user who created the allocation
+%LET USERID = GetUserInfo(GetUserID(),"USERID1");
+
+// Create the SQL Extract
+%LET SQLQUERY = %SQLQUERY + "   select fund.fund,fund.iqregionid,subs.libelle as Subscriber,fshare.libelle as ShareClass, ";
+%LET SQLQUERY = %SQLQUERY + "          to_date('" & Format(%POSITION_DATE,"d/M/yyyy") &"','DD/MM/YYYY') as TradeDate, ";                                                                              
+%LET SQLQUERY = %SQLQUERY + "          sum( ";
+%LET SQLQUERY = %SQLQUERY + "       case when fundop.otype > 0 and fundop.otype <> 100 then coalesce( fopsha.committedamount,0) ";
+%LET SQLQUERY = %SQLQUERY + "            when fundop.otype < 0                         then coalesce(-fopsha.committedamount,0) ";
+%LET SQLQUERY = %SQLQUERY + "       else 0  end ) as CommittedAmount ";
+%LET SQLQUERY = %SQLQUERY + "    from vcsubscrfundopshare fopsha, vcsubscriber subs,vcfundop fundop, vcfund fund, vcfundshare fshare ";
+%LET SQLQUERY = %SQLQUERY + "    where fopsha.subscriber=subs.iqid and fopsha.fundop = fundop.iqid ";
+%LET SQLQUERY = %SQLQUERY + "    and fopsha.iqdeleted = 0 and fundop.iqdeleted = 0 ";
+%LET SQLQUERY = %SQLQUERY + "    and coalesce(fundop.draft,0) = 0 and coalesce(fundop.cancelled,0) = 0 ";
+// %LET SQLQUERY = %SQLQUERY + "    and fundop.closedate <= '31-Dec-17' ";
+%LET SQLQUERY = %SQLQUERY + "       and fundop.closedate <= to_date('" & Format(%POSITION_DATE,"d/M/yyyy") &"','DD/MM/YYYY') ";
+%LET SQLQUERY = %SQLQUERY + "    and fundop.fund = fund.iqid ";
+%LET SQLQUERY = %SQLQUERY + "    and fopsha.fundshare = fshare.iqid ";
+
+// Apply the region filter
+%LET SQLQUERY = %SQLQUERY + "  and fund.iqregionid like '%" & %REGION_IQID & "%' ";
+// Apply the region filter based on the region
+// %LET SQLQUERY = %SQLQUERY + "   and EXISTS (SELECT 1 FROM ADMDYNROLE WHERE USERID='" & %USERID & "' AND READACCESS<>0 AND ROLEID like '%" & %REGION_IQID& "%') ";
+
+// Group by at the end
+%LET SQLQUERY = %SQLQUERY + "    group by fund.fund,fund.iqregionid,subs.libelle,fshare.libelle ";
+
+// Extract the data using SQL
+PROC SQLIMPORT DATA=WORK.T_COMMITMENT SQL=%SQLQUERY ;
+RUN;
+
+// Print a couple of records for tests
+PROC PRINT DATA= WORK.T_COMMITMENT	MAXROWS=10;Title "Negative Position"		; RUN;
+
+// Create the empty structures
+DATA T_COMMITMENT;SET WORK.T_COMMITMENT;STOP;RUN;

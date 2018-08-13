@@ -1,0 +1,290 @@
+// ------------------------------------------------------------------------------
+//                     Author    : eFront-BP2S
+//                     Time-stamp: "2018-08-07 16:15:48 jpdur"
+// ------------------------------------------------------------------------------
+
+LIBNAME USER ".";
+
+// Use the region as a parameter ==> Default region "Generic Region #4" with the max number of records
+%PARAM REGION_IQID LABEL="Region" INFORMAT="??PICKID(ADMROLE;NAME)" DEFAULT="00C148A60D2541F4A6DF45164B06983A" ;
+%PARAM POSITION_DATE   LABEL="Position Date" TYPE=DATE   DEFAULT="31/12/2017" ;                    
+
+// Debug Date
+// PROC PRINT; PUT "to_date('" & Format(%POSITION_DATE,"d/M/yyyy") & "','DD/MM/YYYY') as TradeDate, "; RUN;
+
+// Let's Add the USERID of the user who created the allocation
+%LET USERID = GetUserInfo(GetUserID(),"USERID1");
+
+// Prepare SQL Script
+%LET SQLQUERY = %SQLQUERY + "select vcfund.fund as InvestorFund, ";
+%LET SQLQUERY = %SQLQUERY + "       sfaaccount.name as InvestorCie, ";
+%LET SQLQUERY = %SQLQUERY + "       coalesce(vcfund.currency1, sfaaccount.currency1) as InvestorCurrency, ";
+%LET SQLQUERY = %SQLQUERY + "       FundIssuer.fund as IssuerFund, ";
+%LET SQLQUERY = %SQLQUERY + "       CieIssuer.name as IssuerCie, ";
+%LET SQLQUERY = %SQLQUERY + "       y.* ";
+%LET SQLQUERY = %SQLQUERY + "  from (select ins.shortname, ";
+%LET SQLQUERY = %SQLQUERY + "               ins2.shortname  as IIName4Search, ";
+%LET SQLQUERY = %SQLQUERY + "               ins2.investment, ";
+%LET SQLQUERY = %SQLQUERY + "               OpenList.*, ";
+%LET SQLQUERY = %SQLQUERY + "               admrole.name    as Region, ";
+%LET SQLQUERY = %SQLQUERY + "               invest.firm, ";
+%LET SQLQUERY = %SQLQUERY + "               invest.fund, ";
+%LET SQLQUERY = %SQLQUERY + "               ins.fund        as FundIssuer, ";
+%LET SQLQUERY = %SQLQUERY + "               ins.account     as CieIssuer ";
+%LET SQLQUERY = %SQLQUERY + "          from vcinvestmentins ins, ";
+%LET SQLQUERY = %SQLQUERY + "               vcinvestmentins ins2, ";
+%LET SQLQUERY = %SQLQUERY + "               admrole, ";
+%LET SQLQUERY = %SQLQUERY + "               vcinvestment invest, ";
+%LET SQLQUERY = %SQLQUERY + "               (select investmentins, ";
+// %LET SQLQUERY = %SQLQUERY + "                       '31-Dec-17' as TradeDate, ";
+%LET SQLQUERY = %SQLQUERY + "                      to_date('" & Format(%POSITION_DATE,"d/M/yyyy") &"','DD/MM/YYYY') as TradeDate, ";
+%LET SQLQUERY = %SQLQUERY + "                       'BD - Purchase/Subscription (w/o Commitment)' as Type, ";
+%LET SQLQUERY = %SQLQUERY + "                       currency as InstrumentCurrency, ";
+// %LET SQLQUERY = %SQLQUERY + "                       -- sum(xprincipal) as ConsoPrinc, ";
+// %LET SQLQUERY = %SQLQUERY + "                       -- sum(xamount) as ConsoAmount, ";
+// %LET SQLQUERY = %SQLQUERY + "                       -- amount/principal in Investor ccy ";
+// %LET SQLQUERY = %SQLQUERY + "                       -- amount2/principal2 in Instrument ccy ";
+// %LET SQLQUERY = %SQLQUERY + "                       -- amount7/principal7 in Issuer ccy ";
+%LET SQLQUERY = %SQLQUERY + "                       sum(xprincipal2) as ConsoPrinc2, ";
+%LET SQLQUERY = %SQLQUERY + "                       sum(xamount2) as ConsoAmount2 ";
+%LET SQLQUERY = %SQLQUERY + "                  from (select investmentins, ";
+%LET SQLQUERY = %SQLQUERY + "                               closedate, ";
+%LET SQLQUERY = %SQLQUERY + "                               typeinvestop, ";
+// %LET SQLQUERY = %SQLQUERY + "                               -- principal,amount,principal2,amount2, ";
+%LET SQLQUERY = %SQLQUERY + "                               currency1 as currency, ";
+%LET SQLQUERY = %SQLQUERY + "                               case typeinvestop ";
+%LET SQLQUERY = %SQLQUERY + "                                 when 'PBO' then ";
+%LET SQLQUERY = %SQLQUERY + "                                  abs(coalesce(principal, amount)) ";
+%LET SQLQUERY = %SQLQUERY + "                                 when 'SBO' then ";
+%LET SQLQUERY = %SQLQUERY + "                                  -abs(coalesce(principal, amount)) ";
+%LET SQLQUERY = %SQLQUERY + "                                 when 'BREP' then ";
+%LET SQLQUERY = %SQLQUERY + "                                  -abs(coalesce(principal, amount)) ";
+%LET SQLQUERY = %SQLQUERY + "                               end as xprincipal, ";
+%LET SQLQUERY = %SQLQUERY + "                               case typeinvestop ";
+%LET SQLQUERY = %SQLQUERY + "                                 when 'PBO' then ";
+%LET SQLQUERY = %SQLQUERY + "                                  abs(coalesce(amount, 0)) ";
+%LET SQLQUERY = %SQLQUERY + "                                 when 'SBO' then ";
+%LET SQLQUERY = %SQLQUERY + "                                  -abs(coalesce(amount, 0)) ";
+%LET SQLQUERY = %SQLQUERY + "                                 when 'BREP' then ";
+%LET SQLQUERY = %SQLQUERY + "                                  -abs(coalesce(amount, 0)) ";
+%LET SQLQUERY = %SQLQUERY + "                               end as xamount, ";
+%LET SQLQUERY = %SQLQUERY + "                               case typeinvestop ";
+%LET SQLQUERY = %SQLQUERY + "                                 when 'PBO' then ";
+%LET SQLQUERY = %SQLQUERY + "                                  abs(coalesce(principal2, amount2)) ";
+%LET SQLQUERY = %SQLQUERY + "                                 when 'SBO' then ";
+%LET SQLQUERY = %SQLQUERY + "                                  -abs(coalesce(principal2, amount2)) ";
+%LET SQLQUERY = %SQLQUERY + "                                 when 'BREP' then ";
+%LET SQLQUERY = %SQLQUERY + "                                  -abs(coalesce(principal2, amount2)) ";
+%LET SQLQUERY = %SQLQUERY + "                               end as xprincipal2, ";
+%LET SQLQUERY = %SQLQUERY + "                               case typeinvestop ";
+%LET SQLQUERY = %SQLQUERY + "                                 when 'PBO' then ";
+%LET SQLQUERY = %SQLQUERY + "                                  abs(coalesce(amount2, 0)) ";
+%LET SQLQUERY = %SQLQUERY + "                                 when 'SBO' then ";
+%LET SQLQUERY = %SQLQUERY + "                                  -abs(coalesce(amount2, 0)) ";
+%LET SQLQUERY = %SQLQUERY + "                                 when 'BREP' then ";
+%LET SQLQUERY = %SQLQUERY + "                                  -abs(coalesce(amount2, 0)) ";
+%LET SQLQUERY = %SQLQUERY + "                               end as xamount2 ";
+%LET SQLQUERY = %SQLQUERY + "                          from vcinvestmentop op ";
+// %LET SQLQUERY = %SQLQUERY + "                         where closedate <= '31-Dec-17' ";
+%LET SQLQUERY = %SQLQUERY + "                      where closedate <= to_date('" & Format(%POSITION_DATE,"d/M/yyyy") &"','DD/MM/YYYY') ";
+%LET SQLQUERY = %SQLQUERY + "                           and coalesce(op.draft, 0) = 0 ";
+%LET SQLQUERY = %SQLQUERY + "                           and op.iqdeleted = 0 ";
+%LET SQLQUERY = %SQLQUERY + "                           and coalesce(op.cancelled, 0) = 0 ";
+%LET SQLQUERY = %SQLQUERY + "                           and (typeinvestop in ('PBO', 'SBO') or ";
+%LET SQLQUERY = %SQLQUERY + "                               (typeinvestop = 'BREP' and ";
+%LET SQLQUERY = %SQLQUERY + "                               (principal is null or principal <> 0.0))) ";
+%LET SQLQUERY = %SQLQUERY + " ";
+%LET SQLQUERY = %SQLQUERY + "                        ) x ";
+%LET SQLQUERY = %SQLQUERY + "                 group by investmentins, currency ";
+%LET SQLQUERY = %SQLQUERY + "                 order by investmentins) OpenList ";
+%LET SQLQUERY = %SQLQUERY + " ";
+%LET SQLQUERY = %SQLQUERY + "         where openlist.investmentins = ins2.iqid ";
+%LET SQLQUERY = %SQLQUERY + "           and ins.iqid = ins2.accountins ";
+%LET SQLQUERY = %SQLQUERY + "           and ins2.investment = invest.iqid ";
+%LET SQLQUERY = %SQLQUERY + "           and ins.iqregionid = admrole.iqid ";
+%LET SQLQUERY = %SQLQUERY + " ";
+%LET SQLQUERY = %SQLQUERY + "        ) y ";
+%LET SQLQUERY = %SQLQUERY + "  left join sfaaccount ";
+%LET SQLQUERY = %SQLQUERY + "    on y.firm = sfaaccount.iqid ";
+%LET SQLQUERY = %SQLQUERY + "  left join vcfund ";
+%LET SQLQUERY = %SQLQUERY + "    on y.fund = vcfund.iqid ";
+%LET SQLQUERY = %SQLQUERY + "  left join vcfund FundIssuer ";
+%LET SQLQUERY = %SQLQUERY + "    on y.FundIssuer = FundIssuer.iqid ";
+%LET SQLQUERY = %SQLQUERY + "  left join sfaaccount CieIssuer ";
+%LET SQLQUERY = %SQLQUERY + "    on y.CieIssuer = CieIssuer.iqid ";
+
+// Apply the region filter                      
+%LET SQLQUERY = %SQLQUERY + "   where RegionIQID like '%" & %REGION_IQID & "%' ";
+// Apply the region filter based on the region
+// %LET SQLQUERY = %SQLQUERY + "   and EXISTS (SELECT 1 FROM ADMDYNROLE WHERE USERID='" & %USERID & "' AND READACCESS<>0 AND ROLEID like '%" & %REGION_IQID& "%') ";
+
+// Extract the data using SQL
+PROC SQLIMPORT DATA=WORK.T_OPEN_POSITIONS SQL=%SQLQUERY ;
+RUN;
+
+// -------------------------------------------------------------------------------------------
+// Let's flag the records from 1 ... as the number of records for Generic Region #4 is >65536
+// -------------------------------------------------------------------------------------------
+DATA WORK.T_OPEN_POSITIONS;
+	 SET WORK.T_OPEN_POSITIONS;
+
+	 COLUMN ROW_NUMBER	TYPE=INTEGER;
+
+	 ROW_NUMBER = NZ(LAG(ROW_NUMBER),0)+1;
+	 OUTPUT;
+RUN;
+
+// Let's print the number of records
+%LET NUMBER_RECORDS  = 0;
+PROC MEANS DATA=WORK.T_OPEN_POSITIONS OUT=WORK.COUNT;
+	 N ROW_NUMBER (NAME=COUNT_ALLOCATIONS);
+RUN;
+
+// Setup the ad-hoc variable
+DATA WORK.COUNT;
+	 SET WORK.COUNT;
+	 %NUMBER_RECORDS = COUNT_ALLOCATIONS;
+RUN;
+
+// -------------------------------------------------------------
+// Extract the closed positions for checks and verifications
+// -------------------------------------------------------------
+DATA WORK.T_CLOSED_POSITIONS;
+      SET WORK.T_OPEN_POSITIONS (WHERE ConsoPrinc2 = 0 and ConsoAmount2= 0 ) ;
+RUN;
+DATA WORK.T_OPEN_POSITIONS;
+      SET WORK.T_OPEN_POSITIONS (WHERE NOT( ConsoPrinc2 = 0 and ConsoAmount2= 0) ) ;
+RUN;
+
+// ----------------------------------------------
+// Extract the positions where the position is 1
+// ----------------------------------------------
+DATA WORK.T_POSITION1;
+      SET WORK.T_OPEN_POSITIONS (WHERE ConsoPrinc2 = 1 and ConsoAmount2= 1 ) ;
+RUN;
+DATA WORK.T_OPEN_POSITIONS;
+      SET WORK.T_OPEN_POSITIONS (WHERE NOT( ConsoPrinc2 = 1 and ConsoAmount2= 1) ) ;
+RUN;
+
+// ----------------------------------------------------------------------
+// Extract the positions where the position where the principal <> Amount
+// ----------------------------------------------------------------------
+DATA WORK.T_PRINC_DIFF_AMOUNT;
+      SET WORK.T_OPEN_POSITIONS (WHERE ConsoPrinc2 <> ConsoAmount2 ) ;
+RUN;
+DATA WORK.T_OPEN_POSITIONS;
+      SET WORK.T_OPEN_POSITIONS (WHERE NOT(ConsoPrinc2 <> ConsoAmount2) ) ;
+RUN;
+
+// ----------------------------------------------------------------------
+// Extract the positions where the position where the principal <> Amount
+// ----------------------------------------------------------------------
+DATA WORK.T_NEGATIVE_OPEN_POSITION;
+      SET WORK.T_OPEN_POSITIONS (WHERE ConsoPrinc2 < 0.0  ) ;
+RUN;
+DATA WORK.T_OPEN_POSITIONS;
+      SET WORK.T_OPEN_POSITIONS (WHERE NOT(ConsoPrinc2 < 0.0) ) ;
+RUN;
+
+// ---------------------------------------------
+// Calculate Nb of Positions for stats purposes 
+// ---------------------------------------------
+                                                
+// Recalculate the nb of open positions filtered which are correct
+%LET NUMBER_CORRECT_POSITIONS  = 0;
+PROC MEANS DATA=WORK.T_OPEN_POSITIONS OUT=WORK.COUNT;
+	 N ROW_NUMBER (NAME=COUNT_ALLOCATIONS);
+RUN;
+
+// Setup the ad-hoc variable
+DATA WORK.COUNT;
+	 SET WORK.COUNT;
+	 %NUMBER_CORRECT_POSITIONS = COUNT_ALLOCATIONS;
+RUN;
+
+// Recalculate the nb of closed  positions 
+%LET NUMBER_CLOSED_POSITIONS  = 0;
+PROC MEANS DATA=WORK.T_CLOSED_POSITIONS OUT=WORK.COUNT;
+	 N ROW_NUMBER (NAME=COUNT_ALLOCATIONS);
+RUN;              
+                  
+// Setup the ad-hoc variable
+DATA WORK.COUNT;  
+	 SET WORK.COUNT;
+	 %NUMBER_CLOSED_POSITIONS = COUNT_ALLOCATIONS;
+RUN;               
+                   
+// --------------------------------------
+// Display the results of the extracts
+// --------------------------------------
+                   
+// Print the number of records
+PROC PRINT ;       
+PUT "Total Nb Open Positions:" & CSTR(%NUMBER_RECORDS) & " Nb Correct Positions:" & CSTR(%NUMBER_CORRECT_POSITIONS) & " Nb Closed Positions:" & CSTR(%NUMBER_CLOSED_POSITIONS) ;
+RUN;
+
+// Print a couple of records for tests
+PROC PRINT DATA= WORK.T_NEGATIVE_OPEN_POSITION	MAXROWS=10;Title "Negative Position"		; RUN;
+PROC PRINT DATA= WORK.T_PRINC_DIFF_AMOUNT	  	MAXROWS=10;Title "Principal Diff Amount"	; RUN;
+PROC PRINT DATA= WORK.T_CLOSED_POSITIONS      	MAXROWS=10;Title "Closed Positions"			; RUN;
+PROC PRINT DATA= WORK.T_POSITION1      		  	MAXROWS=10;Title "Position 1"				; RUN;
+PROC PRINT DATA= WORK.T_OPEN_POSITIONS 		  	MAXROWS=10;Title "Standard Open Positions"	; RUN;
+
+// -----------------------------------------------------
+// Split the positions because there are more than 65536
+// -----------------------------------------------------
+// Renumber the positions accordingly from 1 to ....
+// -----------------------------------------------------
+DATA WORK.T_OPEN_POSITIONS;
+	 SET WORK.T_OPEN_POSITIONS;
+
+	 ROW_NUMBER = NZ(LAG(ROW_NUMBER),0)+1;
+	 OUTPUT;
+RUN;
+
+// ----------------------------------------------------------------------------------------------------------------------------
+// Split the Open Positions tables in 2 tables so that an extract can actually be made easily in order to generate 2 spreadsheets
+// ----------------------------------------------------------------------------------------------------------------------------
+DATA WORK.T_OPEN_POSITIONS1;
+SET WORK.T_OPEN_POSITIONS (where ROW_NUMBER <= 65534) ;
+RUN;
+DATA WORK.T_OPEN_POSITIONS2;
+SET WORK.T_OPEN_POSITIONS (where ROW_NUMBER > 65534) ;
+RUN;
+
+// Create the empty structures
+DATA T_OPEN_POSITIONS1;SET WORK.T_OPEN_POSITIONS1;STOP;RUN;
+DATA T_OPEN_POSITIONS2;SET WORK.T_OPEN_POSITIONS2;STOP;RUN;
+                               
+// Prepare the empty structure for all the complementary tables 
+DATA T_NEGATIVE_OPEN_POSITION  ;SET WORK.T_NEGATIVE_OPEN_POSITION	;STOP;RUN;
+DATA T_PRINC_DIFF_AMOUNT	   ;SET WORK.T_PRINC_DIFF_AMOUNT	  	;STOP;RUN;
+DATA T_CLOSED_POSITIONS		   ;SET WORK.T_CLOSED_POSITIONS      	;STOP;RUN;
+DATA T_POSITION1			   ;SET WORK.T_POSITION1      		  	;STOP;RUN;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
