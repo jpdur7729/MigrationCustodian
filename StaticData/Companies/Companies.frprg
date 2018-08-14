@@ -1,0 +1,38 @@
+// ------------------------------------------------------------------------------
+//                     Author    : eFront-BP2S
+//                     Time-stamp: "2018-08-14 08:18:18 jpdur"
+// ------------------------------------------------------------------------------
+
+LIBNAME USER ".";
+
+// Use the region as a parameter
+%PARAM REGION_IQID LABEL="Region" INFORMAT="??PICKID(ADMROLE;NAME)" DEFAULT="00C148A60D2541F4A6DF45164B06983A" ;
+
+// Let's Add the USERID of the user who created the allocation
+%LET USERID = GetUserInfo(GetUserID(),"IQID1");
+
+// Create the SQL that will be used
+%LET SQLQUERY = %SQLQUERY + "select sfaaccount.name as COMP_NAME,admrole.name as Region,sfaaccount.country as ORIGINAL_COUNTRY,sfaaccount.currency1 as Currency ";
+%LET SQLQUERY = %SQLQUERY + ",'Portfolio Company' as COMP_STATUS ";
+%LET SQLQUERY = %SQLQUERY + "from sfaaccount ";
+%LET SQLQUERY = %SQLQUERY + "left join admrole ";
+%LET SQLQUERY = %SQLQUERY + "on sfaaccount.iqregionid = admrole.iqid ";
+%LET SQLQUERY = %SQLQUERY + "where sfaaccount.iqdeleted = 0 and status = 1 ";
+
+// Restrict the region as entered as parameter                 
+%LET SQLQUERY = %SQLQUERY + "and sfaaccount.iqregionid like '%" & %REGION_IQID & "%'";
+// Apply the region filter based on the characteristics of the end-user
+%LET SQLQUERY = %SQLQUERY + "   and EXISTS (SELECT 1 FROM ADMDYNROLE WHERE USERID='" & %USERID & "' AND READACCESS<>0 AND ROLEID = sfaaccount.iqregionid) ";
+
+// Extract the data using SQL 
+PROC SQLIMPORT DATA=WORK.T_PORT_COMP SQL=%SQLQUERY ;
+RUN;
+
+// Check If data has been produced
+PROC PRINT DATA= WORK.T_PORT_COMP MAXROWS=10;RUN;
+
+// Create Empty Structure 
+DATA T_PORT_COMP;
+SET  WORK.T_PORT_COMP;
+STOP;
+RUN;

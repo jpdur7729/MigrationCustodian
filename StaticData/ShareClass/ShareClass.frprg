@@ -1,0 +1,65 @@
+// ------------------------------------------------------------------------------
+//                     Author    : eFront-BP2S
+//                     Time-stamp: "2018-08-14 09:13:48 jpdur"
+// ------------------------------------------------------------------------------
+
+LIBNAME USER ".";
+
+// Use the region as a parameter
+%PARAM REGION_IQID LABEL="Region" INFORMAT="??PICKID(ADMROLE;NAME)" DEFAULT="00C148A60D2541F4A6DF45164B06983A" ;
+                                                                                                             
+// Let's Add the USERID of the user who created the allocation                                               
+%LET USERID = GetUserInfo(GetUserID(),"IQID1");                                                              
+                                                                                                             
+// -------------------------------------------------------------------------------------------               
+// Using the View to extract all the fields ==> SHORTNAME is the key field                                   
+// Duplication - as in the case of Jersey - are known and should disappear as a result of the                
+// current process                                                                                           
+// -------------------------------------------------------------------------------------------               
+// From Initial view version the column Fund which is the fund name                                          
+// is replace by the column FUNDIQID which will be used to filter the fund with no GL                        
+// -------------------------------------------------------------------------------------------               
+// User dependent region filtering is part of the VIEW ==> But it is related to the Share Class
+// which may or may not be sufficient as the ShareClasses seem to have been created in the Shared Region
+// -------------------------------------------------------------------------------------------
+DATA WORK.T_FUND_SHARES_UNFILTERED;
+SET  V_FUND_SHARES;
+RUN;
+
+// ---------------------------------------------
+// Create the SQL to identify the funds with GL
+// We eliminate the funds with GL and we test the region ID
+// ---------------------------------------------
+%LET SQLQUERY = %SQLQUERY + "select fund as fund,iqid as FUNDIQID ";
+%LET SQLQUERY = %SQLQUERY + "from vcfund ";
+%LET SQLQUERY = %SQLQUERY + "where iqid not in (select fund from glentitychart where iqdeleted = 0 and fund is not null) ";
+
+// Restrict the region as entered as parameter
+%LET SQLQUERY = %SQLQUERY + "and vcfund.iqregionid like '%" & %REGION_IQID & "%'";
+// Apply the region filter based on the characteristics of the end-user                                                                               
+%LET SQLQUERY = %SQLQUERY + "   and EXISTS (SELECT 1 FROM ADMDYNROLE WHERE USERID='" & %USERID & "' AND READACCESS<>0 AND ROLEID = vcfund.iqregionid) ";
+
+// Extract the data using SQL
+PROC SQLIMPORT DATA=WORK.T_FUND_WITHOUTGL SQL=%SQLQUERY ;
+RUN;
+
+// ---------------------------------------------------------------------------------------------
+// We eliminate the shares from fund which have GL as this should be covered by the TA migration
+// ---------------------------------------------------------------------------------------------
+DATA WORK.T_FUND_SHARES;
+	 MERGE WORK.T_FUND_SHARES_UNFILTERED (IN=Flag1) WORK.T_FUND_WITHOUTGL (IN=Flag2);
+	 BY FUNDIQID;
+
+	 IF (Flag1 AND Flag2) THEN OUTPUT;
+	 END;
+RUN;
+
+// Check If data has been produced
+PROC PRINT DATA= WORK.T_FUND_SHARES MAXROWS=25;
+RUN;
+
+// Create Empty Structure
+DATA T_FUND_SHARES;
+SET  WORK.T_FUND_SHARES;
+STOP;
+RUN;
