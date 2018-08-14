@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-08-14 08:23:09 jpdur"
+//                     Time-stamp: "2018-08-14 15:37:28 jpdur"
 // ------------------------------------------------------------------------------
 
 LIBNAME USER ".";
@@ -18,8 +18,10 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "          'Investment Loan' ";
 %LET SQLQUERY = %SQLQUERY + "         when 'OS' then ";
 %LET SQLQUERY = %SQLQUERY + "          'Equity' ";
-%LET SQLQUERY = %SQLQUERY + "         when 'LOAN' then ";
+%LET SQLQUERY = %SQLQUERY + "         when 'LOAN' then ";     
 %LET SQLQUERY = %SQLQUERY + "          'Credit Facility Loan' ";
+%LET SQLQUERY = %SQLQUERY + "         when 'BOND' then ";       
+%LET SQLQUERY = %SQLQUERY + "          'Classic Bonds' ";
 %LET SQLQUERY = %SQLQUERY + "       end as TranslatedCode, ";
 %LET SQLQUERY = %SQLQUERY + "       fund.fund as FundIssuerName, ";
 %LET SQLQUERY = %SQLQUERY + "       sfaaccount.name as IssuerCieName, ";
