@@ -1,12 +1,13 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-08-14 18:47:06 jpdur"
+//                     Time-stamp: "2018-08-15 12:53:34 jpdur"
 // ------------------------------------------------------------------------------
 
 LIBNAME USER ".";
 
 // Use the region as a parameter ==> Default region "Generic Region #4" with the max number of records
-%PARAM REGION_IQID 	   LABEL="Region" INFORMAT="??PICKID(ADMROLE;NAME)" DEFAULT="00C148A60D2541F4A6DF45164B06983A" ;
+// %PARAM REGION_IQID 	   LABEL="Region" INFORMAT="??PICKID(ADMROLE;NAME)" DEFAULT="00C148A60D2541F4A6DF45164B06983A" ;
+%PARAM REGION_IQID 	   LABEL="Region" INFORMAT="??PICKID(ADMROLE;NAME)" 
 %PARAM POSITION_DATE   LABEL="Position Date" TYPE=DATE   DEFAULT="31/12/2017" ;
                                          
 // Let's Add the USERID of the user who created the allocation
@@ -166,10 +167,10 @@ RUN;
 // Extract the closed positions for checks and verifications
 // -------------------------------------------------------------
 DATA WORK.T_CLOSED_POSITIONS;
-      SET WORK.T_OPEN_POSITIONS (WHERE ConsoPrinc2 = 0 and ConsoAmount2= 0 ) ;
+      SET WORK.T_OPEN_POSITIONS (WHERE ConsoShares = 0 ) ;        
 RUN;
 DATA WORK.T_OPEN_POSITIONS;
-      SET WORK.T_OPEN_POSITIONS (WHERE NOT( ConsoPrinc2 = 0 and ConsoAmount2= 0) ) ;
+      SET WORK.T_OPEN_POSITIONS (WHERE NOT( ConsoShares = 0 ) ) ;
 RUN;
 
 // ----------------------------------------------
@@ -185,68 +186,68 @@ RUN;
 // ----------------------------------------------------------------------
 // Extract the positions where the position where the principal <> Amount
 // ----------------------------------------------------------------------
-DATA WORK.T_PRINC_DIFF_AMOUNT;
-      SET WORK.T_OPEN_POSITIONS (WHERE ConsoPrinc2 <> ConsoAmount2 ) ;
-RUN;
-DATA WORK.T_OPEN_POSITIONS;
-      SET WORK.T_OPEN_POSITIONS (WHERE NOT(ConsoPrinc2 <> ConsoAmount2) ) ;
-RUN;
-
+DATA WORK.T_PRINC_DIFF_AMOUNT;                        
+      SET WORK.T_OPEN_POSITIONS (WHERE ConsoShares*UnitPrice <> ConsoAmount2 ) ;
+RUN;                                              
+DATA WORK.T_OPEN_POSITIONS;                       
+      SET WORK.T_OPEN_POSITIONS (WHERE NOT(ConsoShares*UnitPrice <> ConsoAmount2) ) ;
+RUN;                                                           
+                                                               
 // ----------------------------------------------------------------------
 // Extract the positions where the position where the principal <> Amount
 // ----------------------------------------------------------------------
-DATA WORK.T_NEGATIVE_OPEN_POSITION;
-      SET WORK.T_OPEN_POSITIONS (WHERE ConsoPrinc2 < 0.0  ) ;
-RUN;
-DATA WORK.T_OPEN_POSITIONS;
-      SET WORK.T_OPEN_POSITIONS (WHERE NOT(ConsoPrinc2 < 0.0) ) ;
-RUN;
-
-// ---------------------------------------------
-// Calculate Nb of Positions for stats purposes 
-// ---------------------------------------------
-                                                
+DATA WORK.T_NEGATIVE_OPEN_POSITION;                            
+      SET WORK.T_OPEN_POSITIONS (WHERE ConsoShares < 0.0  ) ;  
+RUN;                                                           
+DATA WORK.T_OPEN_POSITIONS;                                    
+      SET WORK.T_OPEN_POSITIONS (WHERE NOT(ConsoShares < 0.0) ) ;
+RUN;                                                           
+                                                               
+// ---------------------------------------------               
+// Calculate Nb of Positions for stats purposes                
+// ---------------------------------------------               
+                                                               
 // Recalculate the nb of open positions filtered which are correct
-%LET NUMBER_CORRECT_POSITIONS  = 0;
-PROC MEANS DATA=WORK.T_OPEN_POSITIONS OUT=WORK.COUNT;
-	 N ROW_NUMBER (NAME=COUNT_ALLOCATIONS);
-RUN;
-
-// Setup the ad-hoc variable
-DATA WORK.COUNT;
-	 SET WORK.COUNT;
-	 %NUMBER_CORRECT_POSITIONS = COUNT_ALLOCATIONS;
-RUN;
-
-// Recalculate the nb of closed  positions 
-%LET NUMBER_CLOSED_POSITIONS  = 0;
-PROC MEANS DATA=WORK.T_CLOSED_POSITIONS OUT=WORK.COUNT;
-	 N ROW_NUMBER (NAME=COUNT_ALLOCATIONS);
-RUN;              
-                  
-// Setup the ad-hoc variable
-DATA WORK.COUNT;  
-	 SET WORK.COUNT;
-	 %NUMBER_CLOSED_POSITIONS = COUNT_ALLOCATIONS;
-RUN;               
-                   
-// --------------------------------------
-// Display the results of the extracts
-// --------------------------------------
-                   
-// Print the number of records
-PROC PRINT ;       
+%LET NUMBER_CORRECT_POSITIONS  = 0;                            
+PROC MEANS DATA=WORK.T_OPEN_POSITIONS OUT=WORK.COUNT;          
+	 N ROW_NUMBER (NAME=COUNT_ALLOCATIONS);                    
+RUN;                                                           
+                                                               
+// Setup the ad-hoc variable                                   
+DATA WORK.COUNT;                                               
+	 SET WORK.COUNT;                                           
+	 %NUMBER_CORRECT_POSITIONS = COUNT_ALLOCATIONS;            
+RUN;                                                           
+                                                               
+// Recalculate the nb of closed  positions                     
+%LET NUMBER_CLOSED_POSITIONS  = 0;                             
+PROC MEANS DATA=WORK.T_CLOSED_POSITIONS OUT=WORK.COUNT;        
+	 N ROW_NUMBER (NAME=COUNT_ALLOCATIONS);                    
+RUN;                                                           
+                                                               
+// Setup the ad-hoc variable                                   
+DATA WORK.COUNT;                                               
+	 SET WORK.COUNT;                                           
+	 %NUMBER_CLOSED_POSITIONS = COUNT_ALLOCATIONS;             
+RUN;                                                           
+                                                               
+// --------------------------------------                      
+// Display the results of the extracts                         
+// --------------------------------------                      
+                                                               
+// Print the number of records                                 
+PROC PRINT ;                                                   
 PUT "Total Nb Open Positions:" & CSTR(%NUMBER_RECORDS) & " Nb Correct Positions:" & CSTR(%NUMBER_CORRECT_POSITIONS) & " Nb Closed Positions:" & CSTR(%NUMBER_CLOSED_POSITIONS) ;
-RUN;
-
-// Print a couple of records for tests
+RUN;                                                           
+                                                               
+// Print a couple of records for tests                         
 PROC PRINT DATA= WORK.T_NEGATIVE_OPEN_POSITION	MAXROWS=10;Title "Negative Position"		; RUN;
 PROC PRINT DATA= WORK.T_PRINC_DIFF_AMOUNT	  	MAXROWS=10;Title "Principal Diff Amount"	; RUN;
 PROC PRINT DATA= WORK.T_CLOSED_POSITIONS      	MAXROWS=10;Title "Closed Positions"			; RUN;
 PROC PRINT DATA= WORK.T_POSITION1      		  	MAXROWS=10;Title "Position 1"				; RUN;
 PROC PRINT DATA= WORK.T_OPEN_POSITIONS 		  	MAXROWS=10;Title "Standard Open Positions"	; RUN;
-
-// -----------------------------------------------------
+                                                               
+// -----------------------------------------------------       
 // Split the positions because there are more than 65536
 // -----------------------------------------------------
 // Renumber the positions accordingly from 1 to ....
