@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-08-14 15:37:28 jpdur"
+//                     Time-stamp: "2018-08-16 15:27:06 jpdur"
 // ------------------------------------------------------------------------------
 
 LIBNAME USER ".";
@@ -18,9 +18,10 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "          'Investment Loan' ";
 %LET SQLQUERY = %SQLQUERY + "         when 'OS' then ";
 %LET SQLQUERY = %SQLQUERY + "          'Equity' ";
-%LET SQLQUERY = %SQLQUERY + "         when 'LOAN' then ";     
-%LET SQLQUERY = %SQLQUERY + "          'Credit Facility Loan' ";
-%LET SQLQUERY = %SQLQUERY + "         when 'BOND' then ";       
+%LET SQLQUERY = %SQLQUERY + "         when 'LOAN' then ";
+//%LET SQLQUERY = %SQLQUERY + "          'Credit Facility Loan' ";
+%LET SQLQUERY = %SQLQUERY + "          'Investment Loan' ";
+%LET SQLQUERY = %SQLQUERY + "         when 'BOND' then ";
 %LET SQLQUERY = %SQLQUERY + "          'Classic Bonds' ";
 %LET SQLQUERY = %SQLQUERY + "       end as TranslatedCode, ";
 %LET SQLQUERY = %SQLQUERY + "       fund.fund as FundIssuerName, ";
@@ -52,7 +53,7 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "  left join vcinvestinstype ";
 %LET SQLQUERY = %SQLQUERY + "    on ins.investinstype = vcinvestinstype.iqid ";
 %LET SQLQUERY = %SQLQUERY + " where ins.accountins is null ";
-%LET SQLQUERY = %SQLQUERY + "   and vcinvestinstype.code in ('LINV', 'OS', 'LOAN') ";
+%LET SQLQUERY = %SQLQUERY + "   and vcinvestinstype.code in ('LINV', 'OS', 'LOAN','BOND') ";
 %LET SQLQUERY = %SQLQUERY + "   and ins.iqdeleted = 0 ";
 // Filter out all instruments for which  there is non transactions
 %LET SQLQUERY = %SQLQUERY + "and ins.iqid not in ( ";
