@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-08-16 15:27:06 jpdur"
+//                     Time-stamp: "2018-08-16 15:35:22 jpdur"
 // ------------------------------------------------------------------------------
 
 LIBNAME USER ".";
@@ -19,7 +19,6 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "         when 'OS' then ";
 %LET SQLQUERY = %SQLQUERY + "          'Equity' ";
 %LET SQLQUERY = %SQLQUERY + "         when 'LOAN' then ";
-//%LET SQLQUERY = %SQLQUERY + "          'Credit Facility Loan' ";
 %LET SQLQUERY = %SQLQUERY + "          'Investment Loan' ";
 %LET SQLQUERY = %SQLQUERY + "         when 'BOND' then ";
 %LET SQLQUERY = %SQLQUERY + "          'Classic Bonds' ";
