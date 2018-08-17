@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-08-14 09:13:48 jpdur"
+//                     Time-stamp: "2018-08-17 16:21:27 jpdur"
 // ------------------------------------------------------------------------------
 
 LIBNAME USER ".";
@@ -36,7 +36,7 @@ RUN;
 
 // Restrict the region as entered as parameter
 %LET SQLQUERY = %SQLQUERY + "and vcfund.iqregionid like '%" & %REGION_IQID & "%'";
-// Apply the region filter based on the characteristics of the end-user                                                                               
+// Apply the region filter based on the characteristics of the end-user
 %LET SQLQUERY = %SQLQUERY + "   and EXISTS (SELECT 1 FROM ADMDYNROLE WHERE USERID='" & %USERID & "' AND READACCESS<>0 AND ROLEID = vcfund.iqregionid) ";
 
 // Extract the data using SQL
@@ -48,11 +48,55 @@ RUN;
 // ---------------------------------------------------------------------------------------------
 DATA WORK.T_FUND_SHARES;
 	 MERGE WORK.T_FUND_SHARES_UNFILTERED (IN=Flag1) WORK.T_FUND_WITHOUTGL (IN=Flag2);
-	 BY FUNDIQID;
-
+	 BY FUNDIQID;       
+                        
 	 IF (Flag1 AND Flag2) THEN OUTPUT;
-	 END;
+	 END;               
+RUN;                    
+                        
+// ----------------------------------------------------------------------------
+// Revisit the mapping which needs to be modified in the FIC to FIA migration
+// ----------------------------------------------------------------------------
+// Modifications of mapping are
+// ~~~~~~~~~~~ TYPE ~~~~~~~~~~~~~~~               
+// FIC "Share" 		FIA "Ordinary Share"
+// FIC "Loan" 		FIA "Loan Share"
+// FIC "Interest" 	FIA EMPTY
+// ~~~~~~~~~~~ SUBTYPE ~~~~~~~~~~~~~~~
+// FIC "Ordinary share"		FIA "Ordinary Share"
+// FIC "Carried share"		FIA "Carried share"
+// FIC "Management fees"	FIA "Management Fees"
+// FIC "Hurdle share"		FIA EMPTY       
+// FIC "Mezzanine share" 	FIA "Mezzanine shares"
+// ----------------------------------------------------------------------------
+DATA WORK.T_FUND_SHARES;
+	 SET WORK.T_FUND_SHARES;
+
+	 // Remapping FIC to FIA of Share Type
+	 IF      FUND_SHARE_TYPE_ = "Share"		THEN
+	 		 FUND_SHARE_TYPE_ = "Ordinary Share";
+	 ELSEIF  FUND_SHARE_TYPE_ = "Loan"		THEN
+	 		 FUND_SHARE_TYPE_ = "Loan Share";
+	 ELSEIF  FUND_SHARE_TYPE_ = "Interest"  THEN
+	 		 FUND_SHARE_TYPE_ = "";
+     END;
+
+	 // Remapping FIC to FIA of Share Sub Type
+	 IF      SHARESUBTYPE = "Ordinary share"	THEN
+	 		 SHARESUBTYPE = "Ordinary Share";
+	 ELSEIF  SHARESUBTYPE = "Carried share"		THEN
+	 		 SHARESUBTYPE = "Carried share";
+	 ELSEIF  SHARESUBTYPE = "Management fees"	THEN
+	 		 SHARESUBTYPE = "Management Fees";
+	 ELSEIF  SHARESUBTYPE = "Hurdle share"		THEN
+	 		 SHARESUBTYPE = "";
+	 ELSEIF  SHARESUBTYPE = "Mezzanine share"  	THEN
+	 		 SHARESUBTYPE = "Mezzanine shares";
+     END;
+
+	 OUTPUT;
 RUN;
+
 
 // Check If data has been produced
 PROC PRINT DATA= WORK.T_FUND_SHARES MAXROWS=25;
