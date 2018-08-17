@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-08-16 15:35:22 jpdur"
+//                     Time-stamp: "2018-08-17 14:20:59 jpdur"
 // ------------------------------------------------------------------------------
 
 LIBNAME USER ".";
@@ -54,14 +54,27 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + " where ins.accountins is null ";
 %LET SQLQUERY = %SQLQUERY + "   and vcinvestinstype.code in ('LINV', 'OS', 'LOAN','BOND') ";
 %LET SQLQUERY = %SQLQUERY + "   and ins.iqdeleted = 0 ";
-// Filter out all instruments for which  there is non transactions
-%LET SQLQUERY = %SQLQUERY + "and ins.iqid not in ( ";
-%LET SQLQUERY = %SQLQUERY + "select ins.iqid ";
-%LET SQLQUERY = %SQLQUERY + "from vcinvestmentins ins, vcinvestmentins ins2, vcinvestinstype  where ins.accountins is null ";
-%LET SQLQUERY = %SQLQUERY + "and ins.iqdeleted = 0 and ins2.accountins = ins.iqid ";
-%LET SQLQUERY = %SQLQUERY + "and ins.investinstype = vcinvestinstype.iqid and vcinvestinstype.code in ('LINV', 'OS', 'LOAN') ";
-%LET SQLQUERY = %SQLQUERY + "and ins2.iqid not in (select distinct investmentins from vcinvestmentop where ";
-%LET SQLQUERY = %SQLQUERY + "iqdeleted = 0 and coalesce(draft,0) = 0 and coalesce(cancelled,0)  = 0 )) ";
+
+// Updated version to filter out instruments with no transactions
+%LET SQLQUERY = %SQLQUERY + "   and ins.iqid in ";               
+%LET SQLQUERY = %SQLQUERY + "       (select distinct accountins ";
+%LET SQLQUERY = %SQLQUERY + "          from vcinvestmentins ";   
+%LET SQLQUERY = %SQLQUERY + "         where accountins is not null ";
+%LET SQLQUERY = %SQLQUERY + "           and iqdeleted = 0 ";     
+%LET SQLQUERY = %SQLQUERY + "           and iqid in (select distinct investmentins ";
+%LET SQLQUERY = %SQLQUERY + "                          from vcinvestmentop ";
+%LET SQLQUERY = %SQLQUERY + "                         where iqdeleted = 0 ";
+%LET SQLQUERY = %SQLQUERY + "                           and coalesce(draft, 0) = 0 ";
+%LET SQLQUERY = %SQLQUERY + "                           and coalesce(cancelled, 0) = 0)) ";
+                                                                 
+// // Filter out all instruments for which  there is non transactions
+// %LET SQLQUERY = %SQLQUERY + "and ins.iqid not in ( ";
+// %LET SQLQUERY = %SQLQUERY + "select ins.iqid ";
+// %LET SQLQUERY = %SQLQUERY + "from vcinvestmentins ins, vcinvestmentins ins2, vcinvestinstype  where ins.accountins is null ";
+// %LET SQLQUERY = %SQLQUERY + "and ins.iqdeleted = 0 and ins2.accountins = ins.iqid ";
+// %LET SQLQUERY = %SQLQUERY + "and ins.investinstype = vcinvestinstype.iqid and vcinvestinstype.code in ('LINV', 'OS', 'LOAN') ";
+// %LET SQLQUERY = %SQLQUERY + "and ins2.iqid not in (select distinct investmentins from vcinvestmentop where ";
+// %LET SQLQUERY = %SQLQUERY + "iqdeleted = 0 and coalesce(draft,0) = 0 and coalesce(cancelled,0)  = 0 )) ";
 
 // Apply the region filter
 %LET SQLQUERY = %SQLQUERY + "   and ins.iqregionid like '%" & %REGION_IQID & "%'";

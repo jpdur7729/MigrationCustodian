@@ -1,0 +1,17 @@
+// ------------------------------------------------------------------------------
+//                     Author    : eFront-BP2S
+//                     Time-stamp: "2018-08-16 18:51:01 jpdur"
+// ------------------------------------------------------------------------------
+
+LIBNAME USER ".";
+
+// Use the region as a parameter ==> Default region "Generic Region #4" with the max number of records
+%PARAM REGION_IQID 	   LABEL="Region" 		 INFORMAT="??PICKID(ADMROLE;NAME)" ;
+%PARAM POSITION_DATE   LABEL="Position Date" TYPE=DATE   DEFAULT="31/12/2017"  ;
+// Default fund is "Fund 15140" in anonynised DB which is a FoF                             
+%PARAM FUND_IQID 	   LABEL="Fund"  		 INFORMAT="??PICKID(VCFUND;FUND)"  DEFAULT = "8816CE0D56FE49A59E8FAA6084BD12AB" ;
+
+// Let's Add the USERID of the user who created the allocation
+%LET USERID = GetUserInfo(GetUserID(),"IQID1");
+
+// Create the SQL Extract

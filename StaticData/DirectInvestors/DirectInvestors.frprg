@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-08-14 08:27:30 jpdur"
+//                     Time-stamp: "2018-08-17 14:48:59 jpdur"
 // ------------------------------------------------------------------------------
                                               
 LIBNAME USER ".";                             
@@ -12,10 +12,11 @@ LIBNAME USER ".";
 %LET USERID = GetUserInfo(GetUserID(),"IQID1");
 
 // Prepare the SQL query to extract the Direct Investors
-%LET SQLQUERY = %SQLQUERY + "select coalesce(x.libelle, ";
-%LET SQLQUERY = %SQLQUERY + "                coalesce(fund.fund, sfaaccount.name) || '->' || ";
-%LET SQLQUERY = %SQLQUERY + "                coalesce(y.FundIssuerName, y.IssuerCieName)) as Details, ";
-%LET SQLQUERY = %SQLQUERY + "       sfaaccount.name as InvestorCie, ";
+// %LET SQLQUERY = %SQLQUERY + "select coalesce(x.libelle, ";
+// %LET SQLQUERY = %SQLQUERY + "                coalesce(fund.fund, sfaaccount.name) || '->' || ";
+// %LET SQLQUERY = %SQLQUERY + "                coalesce(y.FundIssuerName, y.IssuerCieName)) as Details, ";
+%LET SQLQUERY = %SQLQUERY + "select fund.fund as Details, ";
+// %LET SQLQUERY = %SQLQUERY + "       sfaaccount.name as InvestorCie, ";
 %LET SQLQUERY = %SQLQUERY + "       fund.fund as InvestorFund, ";
 %LET SQLQUERY = %SQLQUERY + "       y.IssuerCieName as InvesteeCie, ";
 %LET SQLQUERY = %SQLQUERY + "       y.FundIssuerName as InvesteeFund, ";
@@ -38,8 +39,8 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "           and ins.iqdeleted = 0) x ";
 %LET SQLQUERY = %SQLQUERY + "  left join vcfund fund ";
 %LET SQLQUERY = %SQLQUERY + "    on x.fund = fund.iqid ";
-%LET SQLQUERY = %SQLQUERY + "  left join sfaaccount ";
-%LET SQLQUERY = %SQLQUERY + "    on x.firm = sfaaccount.iqid ";
+// %LET SQLQUERY = %SQLQUERY + "  left join sfaaccount ";
+// %LET SQLQUERY = %SQLQUERY + "    on x.firm = sfaaccount.iqid ";
 %LET SQLQUERY = %SQLQUERY + "  left join admrole ";
 %LET SQLQUERY = %SQLQUERY + "    on x.iqregionid = admrole.iqid ";
 %LET SQLQUERY = %SQLQUERY + "  join (select ins.iqid, ";
@@ -56,9 +57,10 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "            on ins.account = sfaaccount.iqid ";
 %LET SQLQUERY = %SQLQUERY + "         where accountins is null) y ";
 %LET SQLQUERY = %SQLQUERY + "    on x.accountins = y.iqid ";
+%LET SQLQUERY = %SQLQUERY + " where x.fund is not null ";
 
 // Restrict the region as entered as parameter
-%LET SQLQUERY = %SQLQUERY + " where x.iqregionid like '%" & %REGION_IQID & "%'";
+%LET SQLQUERY = %SQLQUERY + " and x.iqregionid like '%" & %REGION_IQID & "%'";
 // Apply the region filter based on the characteristics of the end-user
 %LET SQLQUERY = %SQLQUERY + "   and EXISTS (SELECT 1 FROM ADMDYNROLE WHERE USERID='" & %USERID & "' AND READACCESS<>0 AND ROLEID = x.iqregionid) ";
 

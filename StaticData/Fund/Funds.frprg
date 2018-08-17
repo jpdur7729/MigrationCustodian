@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-08-14 08:17:23 jpdur"
+//                     Time-stamp: "2018-08-17 11:30:58 jpdur"
 // ------------------------------------------------------------------------------
 
 LIBNAME USER ".";
@@ -13,15 +13,23 @@ LIBNAME USER ".";
 
 // Create the SQL to extract the Funds which have no GL
 %LET SQLQUERY = %SQLQUERY + "select fund as Fund, country as Country,currency1 as Currency,admrole.name as Region, ";
-%LET SQLQUERY = %SQLQUERY + "'Investee Fund (Closed Ended Unitized)' as Fund_Status ";
+%LET SQLQUERY = %SQLQUERY + "'Investee Fund (Closed Ended Unitized)' as Fund_Status, ";
+%LET SQLQUERY = %SQLQUERY + "abbreviation as Fund_ShortName, ";
+%LET SQLQUERY = %SQLQUERY + "case INSTR(descr, '{F}', 1) ";
+%LET SQLQUERY = %SQLQUERY + "     when 0 then descr ";
+%LET SQLQUERY = %SQLQUERY + "     else substr(descr,1,instr(descr,'{F}', 1)-1) ";
+%LET SQLQUERY = %SQLQUERY + "end as Fund_Legal ";
 %LET SQLQUERY = %SQLQUERY + "from vcfund fund ";
 %LET SQLQUERY = %SQLQUERY + "left join admrole ";
 %LET SQLQUERY = %SQLQUERY + "on fund.iqregionid = admrole.iqid ";
-// Specifically the funds for which there is no GL associated 
+%LET SQLQUERY = %SQLQUERY + "left join vcfundtype ";
+%LET SQLQUERY = %SQLQUERY + "on fund.ftype = vcfundtype.code ";
+// Specifically the funds for which there is no GL associated
 %LET SQLQUERY = %SQLQUERY + "where fund.iqid not in (select fund from glentitychart where iqdeleted = 0 and fund is not null) ";
-%LET SQLQUERY = %SQLQUERY + "and fund.iqdeleted=0 ";          
-                                                              
-// Restrict the region as entered as parameter                 
+// %LET SQLQUERY = %SQLQUERY + "and vcfundtype.filter <> '00000000000000000000000000000000' ";
+%LET SQLQUERY = %SQLQUERY + "and fund.iqdeleted=0 ";
+
+// Restrict the region as entered as parameter
 %LET SQLQUERY = %SQLQUERY + "and fund.iqregionid like '%" & %REGION_IQID & "%'";
 // Apply the region filter based on the characteristics of the end-user
 %LET SQLQUERY = %SQLQUERY + "   and EXISTS (SELECT 1 FROM ADMDYNROLE WHERE USERID='" & %USERID & "' AND READACCESS<>0 AND ROLEID = fund.iqregionid) ";
