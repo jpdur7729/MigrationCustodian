@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-08-27 14:25:30 jpdur"
+//                     Time-stamp: "2018-08-27 15:24:41 jpdur"
 // ------------------------------------------------------------------------------
 
 LIBNAME USER ".";
@@ -200,49 +200,50 @@ RUN;
 // ----------------------------------------------------------------------
 // Extract the positions where the position where the principal <> Amount
 // ----------------------------------------------------------------------
-DATA WORK.T_PRINC_DIFF_AMOUNT;                        
-      SET WORK.T_OPEN_POSITIONS (WHERE ConsoShares*UnitPrice <> ConsoAmount2 ) ;
-RUN;                                              
-DATA WORK.T_OPEN_POSITIONS;                       
-      SET WORK.T_OPEN_POSITIONS (WHERE NOT(ConsoShares*UnitPrice <> ConsoAmount2) ) ;
-RUN;                                                           
-                                                               
+DATA WORK.T_NEGATIVE_OPEN_POSITION;
+      SET WORK.T_OPEN_POSITIONS (WHERE ConsoShares < 0.0  ) ;
+RUN;
+DATA WORK.T_OPEN_POSITIONS;
+      SET WORK.T_OPEN_POSITIONS (WHERE NOT(ConsoShares < 0.0) ) ;
+RUN;
+
 // ----------------------------------------------------------------------
 // Extract the positions where the position where the principal <> Amount
 // ----------------------------------------------------------------------
-DATA WORK.T_NEGATIVE_OPEN_POSITION;                            
-      SET WORK.T_OPEN_POSITIONS (WHERE ConsoShares < 0.0  ) ;  
-RUN;                                                           
-DATA WORK.T_OPEN_POSITIONS;                                    
-      SET WORK.T_OPEN_POSITIONS (WHERE NOT(ConsoShares < 0.0) ) ;
-RUN;                                                           
-                                                               
-// ---------------------------------------------               
-// Calculate Nb of Positions for stats purposes                
-// ---------------------------------------------               
-                                                               
+DATA WORK.T_PRINC_DIFF_AMOUNT;
+      SET WORK.T_OPEN_POSITIONS (WHERE ConsoShares*UnitPrice <> ConsoAmount2 ) ;
+RUN;
+DATA WORK.T_OPEN_POSITIONS;
+      SET WORK.T_OPEN_POSITIONS (WHERE NOT(ConsoShares*UnitPrice <> ConsoAmount2) ) ;
+RUN;
+
+
+// ---------------------------------------------
+// Calculate Nb of Positions for stats purposes
+// ---------------------------------------------
+
 // Recalculate the nb of open positions filtered which are correct
-%LET NUMBER_CORRECT_POSITIONS  = 0;                            
-PROC MEANS DATA=WORK.T_OPEN_POSITIONS OUT=WORK.COUNT;          
-	 N ROW_NUMBER (NAME=COUNT_ALLOCATIONS);                    
-RUN;                                                           
-                                                               
-// Setup the ad-hoc variable                                   
-DATA WORK.COUNT;                                               
-	 SET WORK.COUNT;                                           
-	 %NUMBER_CORRECT_POSITIONS = COUNT_ALLOCATIONS;            
-RUN;                                                           
-                                                               
-// Recalculate the nb of closed  positions                     
-%LET NUMBER_CLOSED_POSITIONS  = 0;                             
-PROC MEANS DATA=WORK.T_CLOSED_POSITIONS OUT=WORK.COUNT;        
-	 N ROW_NUMBER (NAME=COUNT_ALLOCATIONS);                    
-RUN;                                                           
-                                                               
-// Setup the ad-hoc variable                                   
-DATA WORK.COUNT;                                               
-	 SET WORK.COUNT;                                           
-	 %NUMBER_CLOSED_POSITIONS = COUNT_ALLOCATIONS;             
+%LET NUMBER_CORRECT_POSITIONS  = 0;
+PROC MEANS DATA=WORK.T_OPEN_POSITIONS OUT=WORK.COUNT;
+	 N ROW_NUMBER (NAME=COUNT_ALLOCATIONS);
+RUN;
+
+// Setup the ad-hoc variable
+DATA WORK.COUNT;
+	 SET WORK.COUNT;
+	 %NUMBER_CORRECT_POSITIONS = COUNT_ALLOCATIONS;
+RUN;
+
+// Recalculate the nb of closed  positions
+%LET NUMBER_CLOSED_POSITIONS  = 0;
+PROC MEANS DATA=WORK.T_CLOSED_POSITIONS OUT=WORK.COUNT;
+	 N ROW_NUMBER (NAME=COUNT_ALLOCATIONS);
+RUN;
+
+// Setup the ad-hoc variable
+DATA WORK.COUNT;
+	 SET WORK.COUNT;
+	 %NUMBER_CLOSED_POSITIONS = COUNT_ALLOCATIONS;
 RUN;                                                           
                                                                
 // --------------------------------------                      

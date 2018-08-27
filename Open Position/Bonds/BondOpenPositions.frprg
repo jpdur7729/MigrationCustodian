@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-08-27 15:17:28 jpdur"
+//                     Time-stamp: "2018-08-27 15:22:24 jpdur"
 // ------------------------------------------------------------------------------
 
 LIBNAME USER ".";
@@ -39,12 +39,14 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "               admrole.name    as Region, ";
 %LET SQLQUERY = %SQLQUERY + "               invest.firm, ";
 %LET SQLQUERY = %SQLQUERY + "               invest.fund, ";
+%LET SQLQUERY = %SQLQUERY + "               instype.code as InstrumentType, ";
 %LET SQLQUERY = %SQLQUERY + "               ins.fund        as FundIssuer, ";
 %LET SQLQUERY = %SQLQUERY + "               ins.account     as CieIssuer ";
 %LET SQLQUERY = %SQLQUERY + "          from vcinvestmentins ins, ";
 %LET SQLQUERY = %SQLQUERY + "               vcinvestmentins ins2, ";
 %LET SQLQUERY = %SQLQUERY + "               admrole, ";
 %LET SQLQUERY = %SQLQUERY + "               vcinvestment invest, ";
+%LET SQLQUERY = %SQLQUERY + "               vcinvestinstype instype, ";
 %LET SQLQUERY = %SQLQUERY + "               (select investmentins, ";
 // %LET SQLQUERY = %SQLQUERY + "                       '31-Dec-17' as TradeDate, ";
 %LET SQLQUERY = %SQLQUERY + "                      to_date('" & Format(%POSITION_DATE,"d/M/yyyy") &"','DD/MM/YYYY') as TradeDate, ";
@@ -112,6 +114,7 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "           and ins.iqid = ins2.accountins ";
 %LET SQLQUERY = %SQLQUERY + "           and ins2.investment = invest.iqid ";
 %LET SQLQUERY = %SQLQUERY + "           and ins.iqregionid = admrole.iqid ";
+%LET SQLQUERY = %SQLQUERY + "           and ins.investinstype = instype.iqid ";
 %LET SQLQUERY = %SQLQUERY + " ";
 %LET SQLQUERY = %SQLQUERY + "        ) y ";
 %LET SQLQUERY = %SQLQUERY + "  left join sfaaccount ";
