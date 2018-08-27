@@ -1,13 +1,16 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-08-27 10:35:21 jpdur"
+//                     Time-stamp: "2018-08-27 11:31:19 jpdur"
 // ------------------------------------------------------------------------------
 
 LIBNAME USER ".";
-
-// Use the region as a parameter ==> Default region "Generic Region #4" with the max number of records
-// %PARAM REGION_IQID 	   LABEL="Region" INFORMAT="??PICKID(ADMROLE;NAME)" DEFAULT="00C148A60D2541F4A6DF45164B06983A" ;
-%PARAM REGION_IQID 	   LABEL="Fund Region" 	 NOTNULL INFORMAT="??PICKID(ADMROLE;NAME)" ;
+                                                                                                                                     
+// ----------------------------------------------------------------------------------------------------------------------------------
+// Use the region as a parameter ==> Default region "Generic Region #4" with the max number of records                               
+// %PARAM REGION_IQID 	   LABEL="Fund Region" 	 NOTNULL INFORMAT="??PICKID(ADMROLE;NAME)" DEFAULT="00C148A60D2541F4A6DF45164B06983A";
+// NOTNULL does not allow to specify a default value ==> Changed accordingly
+// ----------------------------------------------------------------------------------------------------------------------------------
+%PARAM REGION_IQID 	   LABEL="Fund Region" 	 INFORMAT="??PICKID(ADMROLE;NAME)" DEFAULT="00C148A60D2541F4A6DF45164B06983A";
 %PARAM POSITION_DATE   LABEL="Position Date" TYPE=DATE   DEFAULT="31/12/2017" ;
 // %PARAM FUND_IQID       LABEL="Fund"          NOTNULL INFORMAT="??PICKID(VCFUND;FUND)" ;
 %PARAM FUND_IQID       LABEL="Fund"          INFORMAT="??PICKID(VCFUND;FUND)" ;

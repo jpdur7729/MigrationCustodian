@@ -1,25 +1,34 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-08-14 17:59:22 jpdur"
+//                     Time-stamp: "2018-08-27 11:32:50 jpdur"
 // ------------------------------------------------------------------------------
 
 LIBNAME USER ".";
 
+// ----------------------------------------------------------------------------------------------------------------------------------
 // Use the region as a parameter ==> Default region "Generic Region #4" with the max number of records
-%PARAM REGION_IQID 	   LABEL="Region" INFORMAT="??PICKID(ADMROLE;NAME)" DEFAULT="00C148A60D2541F4A6DF45164B06983A" ;
-%PARAM POSITION_DATE   LABEL="Position Date" TYPE=DATE   DEFAULT="31/12/2017" ;
-                                         
+// %PARAM REGION_IQID 	   LABEL="Fund Region" 	 NOTNULL INFORMAT="??PICKID(ADMROLE;NAME)" DEFAULT="00C148A60D2541F4A6DF45164B06983A";
+// NOTNULL does not allow to specify a default value ==> Changed accordingly
+// ----------------------------------------------------------------------------------------------------------------------------------
+%PARAM REGION_IQID 	   LABEL="Fund Region"   INFORMAT="??PICKID(ADMROLE;NAME)" DEFAULT="00C148A60D2541F4A6DF45164B06983A" ;
+%PARAM POSITION_DATE   LABEL="Position Date" TYPE=DATE   DEFAULT="31/12/2016" ;
+%PARAM FUND_IQID       LABEL="Fund"          INFORMAT="??PICKID(VCFUND;FUND)" ;
+                                             
 // Let's Add the USERID of the user who created the allocation
 %LET USERID = GetUserInfo(GetUserID(),"IQID1");
-                                         
-// Create the SQL Extract
+                                             
+// Create the SQL Extract                    
 %LET SQLQUERY = %SQLQUERY + "select vcfund.fund as InvestorFund, ";
 %LET SQLQUERY = %SQLQUERY + "       sfaaccount.name as InvestorCie, ";
 %LET SQLQUERY = %SQLQUERY + "       coalesce(vcfund.currency1, sfaaccount.currency1) as InvestorCurrency, ";
 %LET SQLQUERY = %SQLQUERY + "       FundIssuer.fund as IssuerFund, ";
 %LET SQLQUERY = %SQLQUERY + "       CieIssuer.name as IssuerCie, ";
 %LET SQLQUERY = %SQLQUERY + "       y.* ";
-%LET SQLQUERY = %SQLQUERY + "  from (select ins.shortname as InstrumentName, ";
+// %LET SQLQUERY = %SQLQUERY + "  from (select ins.shortname as InstrumentName, ";
+%LET SQLQUERY = %SQLQUERY + "  from (select case substr(ins.shortname,1,1) ";
+%LET SQLQUERY = %SQLQUERY + "	 		  		when '0' then '''' || ins.shortname ";
+%LET SQLQUERY = %SQLQUERY + "					else 		  	  	  ins.shortname ";
+%LET SQLQUERY = %SQLQUERY + "			    end as InstrumentName, ";
 %LET SQLQUERY = %SQLQUERY + "               ins2.shortname  as IIName4Search, ";
 %LET SQLQUERY = %SQLQUERY + "               ins2.investment, ";
 %LET SQLQUERY = %SQLQUERY + "               OpenList.*, ";
@@ -52,14 +61,14 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "                       sum(BuyAmount2) as ConsoBuyAmount2, ";
 %LET SQLQUERY = %SQLQUERY + "                       sum(BuyAmount)/sum(BuyAmount2)*sum(xamount2) as ConsoAmount, ";
 %LET SQLQUERY = %SQLQUERY + "                       sum(BuyPrincipal)/sum(BuyAmount2)*sum(xamount2) as ConsoPrincipal ";
-%LET SQLQUERY = %SQLQUERY + "                  from (select investmentins, ";                                           
-%LET SQLQUERY = %SQLQUERY + "                               closedate, ";                                               
-%LET SQLQUERY = %SQLQUERY + "                               typeinvestop, ";                                            
-// %LET SQLQUERY = %SQLQUERY + "                               -- principal,amount,principal2,amount2, ";               
-%LET SQLQUERY = %SQLQUERY + "                               currency1 as currency, ";                                   
-%LET SQLQUERY = %SQLQUERY + "                               case typeinvestop ";                                        
-%LET SQLQUERY = %SQLQUERY + "                                 when 'LOPEN' then ";                                      
-%LET SQLQUERY = %SQLQUERY + "                                  abs(coalesce(principal, amount)) ";                      
+%LET SQLQUERY = %SQLQUERY + "                  from (select investmentins, ";
+%LET SQLQUERY = %SQLQUERY + "                               closedate, ";
+%LET SQLQUERY = %SQLQUERY + "                               typeinvestop, ";
+// %LET SQLQUERY = %SQLQUERY + "                               -- principal,amount,principal2,amount2, ";
+%LET SQLQUERY = %SQLQUERY + "                               currency1 as currency, ";
+%LET SQLQUERY = %SQLQUERY + "                               case typeinvestop ";
+%LET SQLQUERY = %SQLQUERY + "                                 when 'LOPEN' then ";
+%LET SQLQUERY = %SQLQUERY + "                                  abs(coalesce(principal, amount)) ";
 %LET SQLQUERY = %SQLQUERY + "                                 when 'PEQ' then ";                                        
 %LET SQLQUERY = %SQLQUERY + "                                  abs(coalesce(principal, amount)) ";                      
 %LET SQLQUERY = %SQLQUERY + "                                 when 'LREP' then ";                                       
@@ -146,11 +155,16 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "    on y.CieIssuer = CieIssuer.iqid ";
 // To guarantee that the instruments are loan despite the mixed transaction types used
 %LET SQLQUERY = %SQLQUERY + "   where InstrumentType in ('LINV','LOAN') ";
-                                                                  
+%LET SQLQUERY = %SQLQUERY + "   and vcfund.iqid like '%" & %FUND_IQID & "%' ";
+
+// // Apply the region filter
+// %LET SQLQUERY = %SQLQUERY + "   and RegionIQID like '%" & %REGION_IQID & "%' ";
+// // Apply the region filter based on the region
+// %LET SQLQUERY = %SQLQUERY + "   and EXISTS (SELECT 1 FROM ADMDYNROLE WHERE USERID='" & %USERID & "' AND READACCESS<>0 AND ROLEID = RegionIQID ) ";
 // Apply the region filter
-%LET SQLQUERY = %SQLQUERY + "   and RegionIQID like '%" & %REGION_IQID & "%' ";
+%LET SQLQUERY = %SQLQUERY + "   and vcfund.iqregionid like '%" & %REGION_IQID & "%' ";
 // Apply the region filter based on the region
-%LET SQLQUERY = %SQLQUERY + "   and EXISTS (SELECT 1 FROM ADMDYNROLE WHERE USERID='" & %USERID & "' AND READACCESS<>0 AND ROLEID = RegionIQID ) ";
+%LET SQLQUERY = %SQLQUERY + "   and EXISTS (SELECT 1 FROM ADMDYNROLE WHERE USERID='" & %USERID & "' AND READACCESS<>0 AND ROLEID = vcfund.iqregionid ) ";
 
 // Extract the data using SQL
 PROC SQLIMPORT DATA=WORK.T_OPEN_POSITIONS SQL=%SQLQUERY ;
