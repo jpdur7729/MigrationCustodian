@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-08-17 14:48:59 jpdur"
+//                     Time-stamp: "2018-08-23 16:01:05 jpdur"
 // ------------------------------------------------------------------------------
                                               
 LIBNAME USER ".";                             
@@ -15,7 +15,7 @@ LIBNAME USER ".";
 // %LET SQLQUERY = %SQLQUERY + "select coalesce(x.libelle, ";
 // %LET SQLQUERY = %SQLQUERY + "                coalesce(fund.fund, sfaaccount.name) || '->' || ";
 // %LET SQLQUERY = %SQLQUERY + "                coalesce(y.FundIssuerName, y.IssuerCieName)) as Details, ";
-%LET SQLQUERY = %SQLQUERY + "select fund.fund as Details, ";
+%LET SQLQUERY = %SQLQUERY + "select distinct fund.fund as Details, ";       
 // %LET SQLQUERY = %SQLQUERY + "       sfaaccount.name as InvestorCie, ";
 %LET SQLQUERY = %SQLQUERY + "       fund.fund as InvestorFund, ";
 %LET SQLQUERY = %SQLQUERY + "       y.IssuerCieName as InvesteeCie, ";

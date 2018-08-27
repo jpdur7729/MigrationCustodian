@@ -1,26 +1,31 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-08-16 18:33:54 jpdur"
+//                     Time-stamp: "2018-08-27 10:16:11 jpdur"
 // ------------------------------------------------------------------------------
 
 LIBNAME USER ".";
 
 // Use the region as a parameter ==> Default region "Generic Region #4" with the max number of records
 // %PARAM REGION_IQID 	   LABEL="Region" INFORMAT="??PICKID(ADMROLE;NAME)" DEFAULT="00C148A60D2541F4A6DF45164B06983A" ;
-%PARAM REGION_IQID 	   LABEL="Region" INFORMAT="??PICKID(ADMROLE;NAME)" ;
+%PARAM REGION_IQID 	   LABEL="Region" 	     INFORMAT="??PICKID(ADMROLE;NAME)" ;
 %PARAM POSITION_DATE   LABEL="Position Date" TYPE=DATE   DEFAULT="31/12/2017" ;
-                                         
+%PARAM FUND_IQID       LABEL="Fund"          INFORMAT="??PICKID(VCFUND;FUND)" ;
+                                            
 // Let's Add the USERID of the user who created the allocation
 %LET USERID = GetUserInfo(GetUserID(),"IQID1");
-                                         
-// Create the SQL Extract
+                                            
+// Create the SQL Extract                   
 %LET SQLQUERY = %SQLQUERY + "select vcfund.fund as InvestorFund, ";
 %LET SQLQUERY = %SQLQUERY + "       sfaaccount.name as InvestorCie, ";
 %LET SQLQUERY = %SQLQUERY + "       coalesce(vcfund.currency1, sfaaccount.currency1) as InvestorCurrency, ";
-%LET SQLQUERY = %SQLQUERY + "       FundIssuer.fund as IssuerFund, ";
-%LET SQLQUERY = %SQLQUERY + "       CieIssuer.name as IssuerCie, ";
-%LET SQLQUERY = %SQLQUERY + "       y.* ";
-%LET SQLQUERY = %SQLQUERY + "  from (select ins.shortname as InstrumentName, ";
+%LET SQLQUERY = %SQLQUERY + "       FundIssuer.fund as IssuerFund, "; 
+%LET SQLQUERY = %SQLQUERY + "       CieIssuer.name as IssuerCie, ";   
+%LET SQLQUERY = %SQLQUERY + "       y.* ";                            
+// %LET SQLQUERY = %SQLQUERY + "  from (select ins.shortname as InstrumentName, ";
+%LET SQLQUERY = %SQLQUERY + "  from (select case substr(ins.shortname,1,1) ";
+%LET SQLQUERY = %SQLQUERY + "	 		  		when '0' then '''' || ins.shortname ";
+%LET SQLQUERY = %SQLQUERY + "					else 		  	  	  ins.shortname ";
+%LET SQLQUERY = %SQLQUERY + "			    end as InstrumentName, ";
 %LET SQLQUERY = %SQLQUERY + "               ins2.shortname  as IIName4Search, ";
 %LET SQLQUERY = %SQLQUERY + "               ins2.investment, ";
 %LET SQLQUERY = %SQLQUERY + "               OpenList.*, ";
@@ -41,7 +46,7 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "               (select investmentins, ";
 // %LET SQLQUERY = %SQLQUERY + "                       '31-Dec-17' as TradeDate, ";
 %LET SQLQUERY = %SQLQUERY + "                      to_date('" & Format(%POSITION_DATE,"d/M/yyyy") &"','DD/MM/YYYY') as TradeDate, ";
-%LET SQLQUERY = %SQLQUERY + "                       'LN - Advance/Purchase (w/o commitment)' as Type, ";
+%LET SQLQUERY = %SQLQUERY + "                       'EQ - Purchase/Subscription (w/o Commitment)' as Type, ";
 %LET SQLQUERY = %SQLQUERY + "                       currency as InstrumentCurrency, ";
 // %LET SQLQUERY = %SQLQUERY + "                       -- sum(xprincipal) as ConsoPrinc, ";
 // %LET SQLQUERY = %SQLQUERY + "                       -- sum(xamount) as ConsoAmount, ";
@@ -106,7 +111,7 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "                           and coalesce(op.draft, 0) = 0 ";
 %LET SQLQUERY = %SQLQUERY + "                           and op.iqdeleted = 0 ";
 %LET SQLQUERY = %SQLQUERY + "                           and coalesce(op.cancelled, 0) = 0 ";
-%LET SQLQUERY = %SQLQUERY + "                           and typeinvestop in ('PEQ', 'SEQ')";
+%LET SQLQUERY = %SQLQUERY + "                           and typeinvestop in ('PEQ', 'SEQ') ";
 %LET SQLQUERY = %SQLQUERY + " ";
 %LET SQLQUERY = %SQLQUERY + "                        ) x ";
 %LET SQLQUERY = %SQLQUERY + "                 group by investmentins, currency ";
@@ -129,6 +134,7 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "    on y.CieIssuer = CieIssuer.iqid ";
 // To guarantee that the instruments are Equities
 %LET SQLQUERY = %SQLQUERY + "   where InstrumentType in ('OS') ";
+%LET SQLQUERY = %SQLQUERY + "   and vcfund.iqid like '%" & %FUND_IQID & "%' ";
 
 // Apply the region filter
 %LET SQLQUERY = %SQLQUERY + "   and RegionIQID like '%" & %REGION_IQID & "%' ";

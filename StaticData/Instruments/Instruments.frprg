@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-08-17 14:20:59 jpdur"
+//                     Time-stamp: "2018-08-21 08:17:06 jpdur"
 // ------------------------------------------------------------------------------
 
 LIBNAME USER ".";
@@ -60,7 +60,7 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "       (select distinct accountins ";
 %LET SQLQUERY = %SQLQUERY + "          from vcinvestmentins ";   
 %LET SQLQUERY = %SQLQUERY + "         where accountins is not null ";
-%LET SQLQUERY = %SQLQUERY + "           and iqdeleted = 0 ";     
+%LET SQLQUERY = %SQLQUERY + "           and iqdeleted = 0 ";
 %LET SQLQUERY = %SQLQUERY + "           and iqid in (select distinct investmentins ";
 %LET SQLQUERY = %SQLQUERY + "                          from vcinvestmentop ";
 %LET SQLQUERY = %SQLQUERY + "                         where iqdeleted = 0 ";
@@ -113,32 +113,37 @@ PROC PRINT ;
 PUT "Nb Instruments " & CSTR(%NUMBER_RECORDS) ; 
 RUN;
 
+// Debug to check that data has been found 
 PROC PRINT DATA= WORK.T_INSTRUMENTS MAXROWS=10;RUN;
 
-DATA T_INSTRUMENTS;
-SET  WORK.T_INSTRUMENTS;
-STOP;
+// --------------------------------------------------------------------------------------------------
+// Attempt - Aug 21st - to control situation where the name of the instrument starts with 0
+// May create specific problems with strings such as 037A ==> Assumption is that it is not the case
+// --------------------------------------------------------------------------------------------------
+DATA WORK.T_INSTRUMENTS;
+	 SET WORK.T_INSTRUMENTS;
+
+	 // Simplified version. If it starts with 0 then add a '
+     IF MID(LIBELLE,1,1) = "0" THEN
+	 	LIBELLE = "'" & LIBELLE;
+	 END;
+
+	 OUTPUT;
 RUN;
 
 // ----------------------------------------------------------------------------------------------------------------------------
 // Split the instrument tables in 2 tables so that an extract can actually be made easily in order to generate 2 spreadsheets
 // ----------------------------------------------------------------------------------------------------------------------------
-DATA WORK.T_INSTRUMENTS1;
-SET WORK.T_INSTRUMENTS (where ROW_NUMBER <= 65534) ; 
-RUN;
-DATA WORK.T_INSTRUMENTS2;
+DATA WORK.T_INSTRUMENTS1;                           
+SET WORK.T_INSTRUMENTS (where ROW_NUMBER <= 65534) ;
+RUN;                                                
+DATA WORK.T_INSTRUMENTS2;                           
 SET WORK.T_INSTRUMENTS (where ROW_NUMBER > 65534) ; 
-RUN;
-
-// Create the empty structure 
-DATA T_INSTRUMENTS1;
-SET WORK.T_INSTRUMENTS1;
-STOP;
-RUN;
-DATA T_INSTRUMENTS2;
-SET WORK.T_INSTRUMENTS2;
-STOP;
-RUN;
+RUN;                                                
+                                                    
+// Create the empty structures                       
+DATA T_INSTRUMENTS1; SET WORK.T_INSTRUMENTS1; STOP; RUN;
+DATA T_INSTRUMENTS2; SET WORK.T_INSTRUMENTS2; STOP; RUN;
 
 
 
