@@ -1,0 +1,13 @@
+# Exclude all the created/intermediate files
+*.log
+*.exe
+*.csv
+*.xls
+*.xlsx
+*.json
+*.log
+*.txt
+*.zip
+
+# Whitelist the .bat in order to reflect the changes
+!*.bat
