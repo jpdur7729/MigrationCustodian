@@ -1,13 +1,18 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-08-14 08:06:51 jpdur"
+//                     Time-stamp: "2018-08-27 15:17:28 jpdur"
 // ------------------------------------------------------------------------------
 
 LIBNAME USER ".";
 
+// ----------------------------------------------------------------------------------------------------------------------------------
 // Use the region as a parameter ==> Default region "Generic Region #4" with the max number of records
-%PARAM REGION_IQID 	   LABEL="Region" 		 INFORMAT="??PICKID(ADMROLE;NAME)" DEFAULT="00C148A60D2541F4A6DF45164B06983A" ;
-%PARAM POSITION_DATE   LABEL="Position Date" TYPE=DATE   					   DEFAULT="31/12/2017" ;
+// %PARAM REGION_IQID 	   LABEL="Fund Region" 	 NOTNULL INFORMAT="??PICKID(ADMROLE;NAME)" DEFAULT="00C148A60D2541F4A6DF45164B06983A";
+// NOTNULL does not allow to specify a default value ==> Changed accordingly
+// ----------------------------------------------------------------------------------------------------------------------------------
+%PARAM REGION_IQID 	   LABEL="Fund Region"   INFORMAT="??PICKID(ADMROLE;NAME)" DEFAULT="00C148A60D2541F4A6DF45164B06983A" ;
+%PARAM POSITION_DATE   LABEL="Position Date" TYPE=DATE   DEFAULT="31/12/2016" ;
+%PARAM FUND_IQID       LABEL="Fund"          INFORMAT="??PICKID(VCFUND;FUND)" ;
 
 // Debug Date
 // PROC PRINT; PUT "to_date('" & Format(%POSITION_DATE,"d/M/yyyy") & "','DD/MM/YYYY') as TradeDate, "; RUN;
@@ -22,7 +27,11 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "       FundIssuer.fund as IssuerFund, ";
 %LET SQLQUERY = %SQLQUERY + "       CieIssuer.name as IssuerCie, ";
 %LET SQLQUERY = %SQLQUERY + "       y.* ";
-%LET SQLQUERY = %SQLQUERY + "  from (select ins.shortname as InstrumentName, ";
+// %LET SQLQUERY = %SQLQUERY + "  from (select ins.shortname as InstrumentName, ";
+%LET SQLQUERY = %SQLQUERY + "  from (select case substr(ins.shortname,1,1) ";
+%LET SQLQUERY = %SQLQUERY + "	 		  		when '0' then '''' || ins.shortname ";
+%LET SQLQUERY = %SQLQUERY + "					else 		  	  	  ins.shortname ";
+%LET SQLQUERY = %SQLQUERY + "			    end as InstrumentName, ";
 %LET SQLQUERY = %SQLQUERY + "               ins2.shortname  as IIName4Search, ";
 %LET SQLQUERY = %SQLQUERY + "               ins2.investment, ";
 %LET SQLQUERY = %SQLQUERY + "               OpenList.*, ";
@@ -113,9 +122,12 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "    on y.FundIssuer = FundIssuer.iqid ";
 %LET SQLQUERY = %SQLQUERY + "  left join sfaaccount CieIssuer ";
 %LET SQLQUERY = %SQLQUERY + "    on y.CieIssuer = CieIssuer.iqid ";
+// To guarantee that the instruments are loan despite the mixed transaction types used
+%LET SQLQUERY = %SQLQUERY + "   where InstrumentType in ('BOND') ";
+%LET SQLQUERY = %SQLQUERY + "   and vcfund.iqid like '%" & %FUND_IQID & "%' ";
 
-// Apply the region filter                      
-%LET SQLQUERY = %SQLQUERY + "   where RegionIQID like '%" & %REGION_IQID & "%' ";
+// Apply the region filter
+%LET SQLQUERY = %SQLQUERY + "   and RegionIQID like '%" & %REGION_IQID & "%' ";
 // Apply the region filter based on the characteristics of the end-user
 %LET SQLQUERY = %SQLQUERY + "   and EXISTS (SELECT 1 FROM ADMDYNROLE WHERE USERID='" & %USERID & "' AND READACCESS<>0 AND ROLEID = RegionIQID) ";
 

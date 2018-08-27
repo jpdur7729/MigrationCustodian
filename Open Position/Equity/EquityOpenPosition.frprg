@@ -1,12 +1,12 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-08-27 11:31:19 jpdur"
+//                     Time-stamp: "2018-08-27 14:25:30 jpdur"
 // ------------------------------------------------------------------------------
 
 LIBNAME USER ".";
                                                                                                                                      
 // ----------------------------------------------------------------------------------------------------------------------------------
-// Use the region as a parameter ==> Default region "Generic Region #4" with the max number of records                               
+// Use the region as a parameter ==> Default region "Generic Region #4" with the max number of records
 // %PARAM REGION_IQID 	   LABEL="Fund Region" 	 NOTNULL INFORMAT="??PICKID(ADMROLE;NAME)" DEFAULT="00C148A60D2541F4A6DF45164B06983A";
 // NOTNULL does not allow to specify a default value ==> Changed accordingly
 // ----------------------------------------------------------------------------------------------------------------------------------
@@ -14,11 +14,11 @@ LIBNAME USER ".";
 %PARAM POSITION_DATE   LABEL="Position Date" TYPE=DATE   DEFAULT="31/12/2017" ;
 // %PARAM FUND_IQID       LABEL="Fund"          NOTNULL INFORMAT="??PICKID(VCFUND;FUND)" ;
 %PARAM FUND_IQID       LABEL="Fund"          INFORMAT="??PICKID(VCFUND;FUND)" ;
-
+                                         
 // Let's Add the USERID of the user who created the allocation
 %LET USERID = GetUserInfo(GetUserID(),"IQID1");
-
-// Create the SQL Extract
+                                         
+// Create the SQL Extract                
 %LET SQLQUERY = %SQLQUERY + "select vcfund.fund as InvestorFund, ";
 %LET SQLQUERY = %SQLQUERY + "       sfaaccount.name as InvestorCie, ";
 %LET SQLQUERY = %SQLQUERY + "       coalesce(vcfund.currency1, sfaaccount.currency1) as InvestorCurrency, ";
@@ -259,7 +259,7 @@ PROC PRINT DATA= WORK.T_NEGATIVE_OPEN_POSITION	MAXROWS=10;Title "Negative Positi
 PROC PRINT DATA= WORK.T_PRINC_DIFF_AMOUNT	  	MAXROWS=10;Title "Principal Diff Amount"	; RUN;
 PROC PRINT DATA= WORK.T_CLOSED_POSITIONS      	MAXROWS=10;Title "Closed Positions"			; RUN;
 PROC PRINT DATA= WORK.T_POSITION1      		  	MAXROWS=10;Title "Position 1"				; RUN;
-PROC PRINT DATA= WORK.T_OPEN_POSITIONS 		  	MAXROWS=10;Title "Standard Open Positions"	; RUN;
+//PROC PRINT DATA= WORK.T_OPEN_POSITIONS 		  	MAXROWS=10;Title "Standard Open Positions"	; RUN;
                                                                
 // -----------------------------------------------------       
 // Split the positions because there are more than 65536
@@ -268,11 +268,11 @@ PROC PRINT DATA= WORK.T_OPEN_POSITIONS 		  	MAXROWS=10;Title "Standard Open Posi
 // -----------------------------------------------------
 DATA WORK.T_OPEN_POSITIONS;
 	 SET WORK.T_OPEN_POSITIONS;
-
+    
 	 ROW_NUMBER = NZ(LAG(ROW_NUMBER),0)+1;
 	 OUTPUT;
 RUN;
-
+    
 // ----------------------------------------------------------------------------------------------------------------------------
 // Split the Open Positions tables in 2 tables so that an extract can actually be made easily in order to generate 2 spreadsheets
 // ----------------------------------------------------------------------------------------------------------------------------
@@ -282,6 +282,10 @@ RUN;
 DATA WORK.T_OPEN_POSITIONS2;
 SET WORK.T_OPEN_POSITIONS (where ROW_NUMBER > 65534) ;
 RUN;
+
+// Check that the split was actually done correctly
+PROC PRINT DATA= WORK.T_OPEN_POSITIONS1 		  	MAXROWS=10;Title "Standard Open Positions"	; RUN;
+
 
 // Create the empty structures
 DATA T_OPEN_POSITIONS1;SET WORK.T_OPEN_POSITIONS1;STOP;RUN;

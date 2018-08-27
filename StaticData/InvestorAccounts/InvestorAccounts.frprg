@@ -1,61 +1,48 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-08-21 12:07:49 jpdur"
+//                     Time-stamp: "2018-08-27 14:51:04 jpdur"
 // ------------------------------------------------------------------------------
 
 LIBNAME USER ".";
 
+// ---------------------------------------------------------------------
+// Modification on Aug27th -- Filtering out if a fund is not an investor
+// ---------------------------------------------------------------------
+                                                                        
 // Use the region as a parameter ==> Default region "Generic Region #4" with the max number of records
 %PARAM REGION_IQID 	   LABEL="Region" INFORMAT="??PICKID(ADMROLE;NAME)" DEFAULT="00C148A60D2541F4A6DF45164B06983A" ;
-
-// Let's Add the USERID of the user who created the allocation
-%LET USERID = GetUserInfo(GetUserID(),"IQID1");
-                                         
-// Create the SQL Extract                
-// %LET SQLQUERY = %SQLQUERY + "select y.*,vcfundshare.shortname as ShareShortName from( ";
-// %LET SQLQUERY = %SQLQUERY + "select libelle as IAName,ia.fund,fund.fund as FundName,ia.currency1 as currency, ";
-// %LET SQLQUERY = %SQLQUERY + "       ia.iqregionid,admrole.name as Region,ia.fundshare, ";
-// %LET SQLQUERY = %SQLQUERY + "       'INVESTED' as groupbyinvest, ";
-// %LET SQLQUERY = %SQLQUERY + "       case stype ";
-// %LET SQLQUERY = %SQLQUERY + "         when 'COMP_GP' then 'General Partner' ";
-// %LET SQLQUERY = %SQLQUERY + "         when 'CON_GP'  then 'General Partner' ";
-// %LET SQLQUERY = %SQLQUERY + "         else                'Limited Partner' ";
-// %LET SQLQUERY = %SQLQUERY + "       end as xstype ";
-// %LET SQLQUERY = %SQLQUERY + "from VCSUBSCRIBER ia, vcfund fund, admrole ";
-// %LET SQLQUERY = %SQLQUERY + "where ia.iqdeleted = 0 and ia.fund = fund.iqid and fund.iqdeleted = 0 ";
-// %LET SQLQUERY = %SQLQUERY + "      and ia.iqregionid = admrole.iqid ";
-// %LET SQLQUERY = %SQLQUERY + ") y ";   
-// %LET SQLQUERY = %SQLQUERY + "left join vcfundshare ";
-// %LET SQLQUERY = %SQLQUERY + "on y.fundshare = vcfundshare.iqid ";
-                                         
+                                                                        
+// Let's Add the USERID of the user who created the allocation          
+%LET USERID = GetUserInfo(GetUserID(),"IQID1");                         
+                                                                        
 %LET SQLQUERY = %SQLQUERY + "select y.*,vcfundshare.shortname as ShareShortName, ";
 // %LET SQLQUERY = %SQLQUERY + "       sfaaccount.name as InvestorCieName, ";
-%LET SQLQUERY = %SQLQUERY + "       '' as InvestorCieName, ";
-%LET SQLQUERY = %SQLQUERY + "       vcfund.fund as InvestorFundName, ";
-%LET SQLQUERY = %SQLQUERY + "       vcfundinvestor.investor_name as InvestorInvestorName ";
-%LET SQLQUERY = %SQLQUERY + "from( ";
+%LET SQLQUERY = %SQLQUERY + "       '' as InvestorCieName, ";           
+%LET SQLQUERY = %SQLQUERY + "       vcfund.fund as InvestorFundName "; 
+// %LET SQLQUERY = %SQLQUERY + "       vcfundinvestor.investor_name as InvestorInvestorName ";
+%LET SQLQUERY = %SQLQUERY + "from( ";                              
 %LET SQLQUERY = %SQLQUERY + "select ia.libelle as IAName,ia.fund as FundIQID,fund.fund as FundName,ia.currency1 as currency, ";
 %LET SQLQUERY = %SQLQUERY + "       ia.iqregionid,admrole.name as Region,ia.fundshare, ";
 %LET SQLQUERY = %SQLQUERY + "       veh.fund as InvestorFund,veh.account as InvestorCie, ";
 %LET SQLQUERY = %SQLQUERY + "       ia.investor as InvestorInvestor, ";
 %LET SQLQUERY = %SQLQUERY + "       'Invested' as groupbyinvest, ";
-%LET SQLQUERY = %SQLQUERY + "       case stype ";
+%LET SQLQUERY = %SQLQUERY + "       case stype ";                  
 %LET SQLQUERY = %SQLQUERY + "         when 'COMP_GP' then 'General Partner' ";
 %LET SQLQUERY = %SQLQUERY + "         when 'CON_GP'  then 'General Partner' ";
 %LET SQLQUERY = %SQLQUERY + "         else                'Limited Partner' ";
-%LET SQLQUERY = %SQLQUERY + "       end as xstype ";
+%LET SQLQUERY = %SQLQUERY + "       end as xstype ";               
 %LET SQLQUERY = %SQLQUERY + "from VCSUBSCRIBER ia, vcfund fund, admrole, VCSUBSCRVEHICUL veh ";
 %LET SQLQUERY = %SQLQUERY + "where ia.iqdeleted = 0 and ia.fund = fund.iqid and fund.iqdeleted = 0 ";
 %LET SQLQUERY = %SQLQUERY + "      and ia.iqregionid = admrole.iqid and ia.mainvehicule = veh.iqid ";
-%LET SQLQUERY = %SQLQUERY + ") y ";
-%LET SQLQUERY = %SQLQUERY + "left join vcfundshare ";
-%LET SQLQUERY = %SQLQUERY + "on y.fundshare = vcfundshare.iqid ";
-%LET SQLQUERY = %SQLQUERY + "left join vcfund ";
+%LET SQLQUERY = %SQLQUERY + ") y ";                                
+%LET SQLQUERY = %SQLQUERY + "left join vcfundshare ";              
+%LET SQLQUERY = %SQLQUERY + "on y.fundshare = vcfundshare.iqid ";  
+%LET SQLQUERY = %SQLQUERY + "join vcfund ";                   
 %LET SQLQUERY = %SQLQUERY + "on y.InvestorFund = vcfund.iqid ";
 // %LET SQLQUERY = %SQLQUERY + "left join sfaaccount ";
 // %LET SQLQUERY = %SQLQUERY + "on y.InvestorCie = sfaaccount.iqid ";
-%LET SQLQUERY = %SQLQUERY + "left join vcfundinvestor ";
-%LET SQLQUERY = %SQLQUERY + "on y.InvestorInvestor = vcfundinvestor.iqid ";
+// %LET SQLQUERY = %SQLQUERY + "left join vcfundinvestor ";
+// %LET SQLQUERY = %SQLQUERY + "on y.InvestorInvestor = vcfundinvestor.iqid ";
 
 // We filter out the funds with a GL has the situation is covered by the TA migration
 %LET SQLQUERY = %SQLQUERY + "where y.fundIQID not in (select fund from glentitychart where iqdeleted = 0 and fund is not null) ";
