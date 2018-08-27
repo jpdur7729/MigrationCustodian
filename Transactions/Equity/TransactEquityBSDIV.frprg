@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-08-27 15:59:29 jpdur"
+//                     Time-stamp: "2018-08-27 15:52:15 jpdur"
 // ------------------------------------------------------------------------------
 
 LIBNAME USER ".";
@@ -11,14 +11,14 @@ LIBNAME USER ".";
 // NOTNULL does not allow to specify a default value ==> Changed accordingly
 // ----------------------------------------------------------------------------------------------------------------------------------
 %PARAM REGION_IQID 	   LABEL="Fund Region" 	 INFORMAT="??PICKID(ADMROLE;NAME)" DEFAULT="00C148A60D2541F4A6DF45164B06983A";
-%PARAM POSITION_DATE   LABEL="Position Date" TYPE=DATE   DEFAULT="31/12/2017" ;
-// %PARAM FUND_IQID       LABEL="Fund"          NOTNULL INFORMAT="??PICKID(VCFUND;FUND)" ;
+%PARAM START_DATE      LABEL="Start Date excluded" TYPE=DATE   DEFAULT="31/12/2017" ;
+%PARAM END_DATE        LABEL="End Date included"   TYPE=DATE   DEFAULT="30/06/2018" ;
 %PARAM FUND_IQID       LABEL="Fund"          INFORMAT="??PICKID(VCFUND;FUND)" ;
-                                         
+
 // Let's Add the USERID of the user who created the allocation
 %LET USERID = GetUserInfo(GetUserID(),"IQID1");
-                                         
-// Create the SQL Extract                
+
+// Create the SQL Extract
 %LET SQLQUERY = %SQLQUERY + "select vcfund.fund as InvestorFund, ";
 %LET SQLQUERY = %SQLQUERY + "       sfaaccount.name as InvestorCie, ";
 %LET SQLQUERY = %SQLQUERY + "       coalesce(vcfund.currency1, sfaaccount.currency1) as InvestorCurrency, ";
@@ -48,8 +48,7 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "               vcinvestment invest, ";
 %LET SQLQUERY = %SQLQUERY + "               vcinvestinstype instype, ";
 %LET SQLQUERY = %SQLQUERY + "               (select investmentins, ";
-// %LET SQLQUERY = %SQLQUERY + "                       '31-Dec-17' as TradeDate, ";
-%LET SQLQUERY = %SQLQUERY + "                      to_date('" & Format(%POSITION_DATE,"d/M/yyyy") &"','DD/MM/YYYY') as TradeDate, ";
+%LET SQLQUERY = %SQLQUERY + "                       closedate as TradeDate, ";
 %LET SQLQUERY = %SQLQUERY + "                       'EQ - Purchase/Subscription (w/o Commitment)' as Type, ";
 %LET SQLQUERY = %SQLQUERY + "                       currency as InstrumentCurrency, ";
 // %LET SQLQUERY = %SQLQUERY + "                       -- sum(xprincipal) as ConsoPrinc, ";
@@ -110,8 +109,9 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "                                  -abs(coalesce(amount2, 0)) ";
 %LET SQLQUERY = %SQLQUERY + "                               end as xamount2 ";
 %LET SQLQUERY = %SQLQUERY + "                          from vcinvestmentop op ";
-// %LET SQLQUERY = %SQLQUERY + "                         where closedate <= '31-Dec-17' ";
-%LET SQLQUERY = %SQLQUERY + "                      where closedate <= to_date('" & Format(%POSITION_DATE,"d/M/yyyy") &"','DD/MM/YYYY') ";
+// %LET SQLQUERY = %SQLQUERY + "                         where closedate > '31-Dec-17' and closedate <= '30-Jun-18' ";       
+%LET SQLQUERY = %SQLQUERY + "                      where closedate > to_date('" & Format(%START_DATE,"d/M/yyyy") &"','DD/MM/YYYY') ";
+%LET SQLQUERY = %SQLQUERY + "                      		and closedate <= to_date('" & Format(%END_DATE,"d/M/yyyy") &"','DD/MM/YYYY') ";
 %LET SQLQUERY = %SQLQUERY + "                           and coalesce(op.draft, 0) = 0 ";
 %LET SQLQUERY = %SQLQUERY + "                           and op.iqdeleted = 0 ";
 %LET SQLQUERY = %SQLQUERY + "                           and coalesce(op.cancelled, 0) = 0 ";
@@ -150,14 +150,14 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "   and EXISTS (SELECT 1 FROM ADMDYNROLE WHERE USERID='" & %USERID & "' AND READACCESS<>0 AND ROLEID = vcfund.iqregionid ) ";
 
 // Extract the data using SQL
-PROC SQLIMPORT DATA=WORK.T_OPEN_POSITIONS SQL=%SQLQUERY ;
+PROC SQLIMPORT DATA=WORK.T_OPEN_TRANSACTIONS SQL=%SQLQUERY ;
 RUN;
 
 // -------------------------------------------------------------------------------------------
 // Let's flag the records from 1 ... as the number of records for Generic Region #4 is >65536
 // -------------------------------------------------------------------------------------------
-DATA WORK.T_OPEN_POSITIONS;
-	 SET WORK.T_OPEN_POSITIONS;
+DATA WORK.T_OPEN_TRANSACTIONS;
+	 SET WORK.T_OPEN_TRANSACTIONS;
 
 	 COLUMN ROW_NUMBER	TYPE=INTEGER;
 
@@ -167,7 +167,7 @@ RUN;
 
 // Let's print the number of records
 %LET NUMBER_RECORDS  = 0;
-PROC MEANS DATA=WORK.T_OPEN_POSITIONS OUT=WORK.COUNT;
+PROC MEANS DATA=WORK.T_OPEN_TRANSACTIONS OUT=WORK.COUNT;
 	 N ROW_NUMBER (NAME=COUNT_ALLOCATIONS);
 RUN;
 
@@ -177,74 +177,6 @@ DATA WORK.COUNT;
 	 %NUMBER_RECORDS = COUNT_ALLOCATIONS;
 RUN;
 
-// -------------------------------------------------------------
-// Extract the closed positions for checks and verifications
-// -------------------------------------------------------------
-DATA WORK.T_CLOSED_POSITIONS;
-      SET WORK.T_OPEN_POSITIONS (WHERE ConsoShares = 0 ) ;        
-RUN;
-DATA WORK.T_OPEN_POSITIONS;
-      SET WORK.T_OPEN_POSITIONS (WHERE NOT( ConsoShares = 0 ) ) ;
-RUN;
-
-// ----------------------------------------------
-// Extract the positions where the position is 1
-// ----------------------------------------------
-DATA WORK.T_POSITION1;
-      SET WORK.T_OPEN_POSITIONS (WHERE ConsoPrinc2 = 1 and ConsoAmount2= 1 ) ;
-RUN;
-DATA WORK.T_OPEN_POSITIONS;
-      SET WORK.T_OPEN_POSITIONS (WHERE NOT( ConsoPrinc2 = 1 and ConsoAmount2= 1) ) ;
-RUN;
-
-// ----------------------------------------------------------------------
-// Extract the positions where the position where the principal <> Amount
-// ----------------------------------------------------------------------
-DATA WORK.T_NEGATIVE_OPEN_POSITION;
-      SET WORK.T_OPEN_POSITIONS (WHERE ConsoShares < 0.0 or ConsoAmount2 < 0.0   ) ;
-RUN;                                                     
-DATA WORK.T_OPEN_POSITIONS;                              
-      SET WORK.T_OPEN_POSITIONS (WHERE NOT(ConsoShares < 0.0 or ConsoAmount2 < 0.0) ) ;
-RUN;
-
-// ----------------------------------------------------------------------
-// Extract the positions where the position where the principal <> Amount
-// ----------------------------------------------------------------------
-DATA WORK.T_PRINC_DIFF_AMOUNT;
-      SET WORK.T_OPEN_POSITIONS (WHERE ConsoShares*UnitPrice <> ConsoAmount2 ) ;
-RUN;
-DATA WORK.T_OPEN_POSITIONS;
-      SET WORK.T_OPEN_POSITIONS (WHERE NOT(ConsoShares*UnitPrice <> ConsoAmount2) ) ;
-RUN;
-
-
-// ---------------------------------------------
-// Calculate Nb of Positions for stats purposes
-// ---------------------------------------------
-
-// Recalculate the nb of open positions filtered which are correct
-%LET NUMBER_CORRECT_POSITIONS  = 0;
-PROC MEANS DATA=WORK.T_OPEN_POSITIONS OUT=WORK.COUNT;
-	 N ROW_NUMBER (NAME=COUNT_ALLOCATIONS);
-RUN;
-
-// Setup the ad-hoc variable
-DATA WORK.COUNT;
-	 SET WORK.COUNT;
-	 %NUMBER_CORRECT_POSITIONS = COUNT_ALLOCATIONS;
-RUN;
-
-// Recalculate the nb of closed  positions
-%LET NUMBER_CLOSED_POSITIONS  = 0;
-PROC MEANS DATA=WORK.T_CLOSED_POSITIONS OUT=WORK.COUNT;
-	 N ROW_NUMBER (NAME=COUNT_ALLOCATIONS);
-RUN;
-
-// Setup the ad-hoc variable
-DATA WORK.COUNT;
-	 SET WORK.COUNT;
-	 %NUMBER_CLOSED_POSITIONS = COUNT_ALLOCATIONS;
-RUN;
 
 // --------------------------------------
 // Display the results of the extracts
@@ -252,49 +184,36 @@ RUN;
 
 // Print the number of records
 PROC PRINT ;
-PUT "Total Nb Open Positions:" & CSTR(%NUMBER_RECORDS) & " Nb Correct Positions:" & CSTR(%NUMBER_CORRECT_POSITIONS) & " Nb Closed Positions:" & CSTR(%NUMBER_CLOSED_POSITIONS) ;
+PUT "Total Nb Transactions: " & CSTR(%NUMBER_RECORDS) ;
 RUN;
-
-// Print a couple of records for tests
-PROC PRINT DATA= WORK.T_NEGATIVE_OPEN_POSITION	MAXROWS=10;Title "Negative Position"		; RUN;
-PROC PRINT DATA= WORK.T_PRINC_DIFF_AMOUNT	  	MAXROWS=10;Title "Principal Diff Amount"	; RUN;
-PROC PRINT DATA= WORK.T_CLOSED_POSITIONS      	MAXROWS=10;Title "Closed Positions"			; RUN;
-PROC PRINT DATA= WORK.T_POSITION1      		  	MAXROWS=10;Title "Position 1"				; RUN;
-//PROC PRINT DATA= WORK.T_OPEN_POSITIONS 		  	MAXROWS=10;Title "Standard Open Positions"	; RUN;
 
 // -----------------------------------------------------
 // Split the positions because there are more than 65536
 // -----------------------------------------------------
 // Renumber the positions accordingly from 1 to ....
 // -----------------------------------------------------
-DATA WORK.T_OPEN_POSITIONS;
-	 SET WORK.T_OPEN_POSITIONS;
-    
+DATA WORK.T_OPEN_TRANSACTIONS;
+	 SET WORK.T_OPEN_TRANSACTIONS;
+
 	 ROW_NUMBER = NZ(LAG(ROW_NUMBER),0)+1;
 	 OUTPUT;
 RUN;
-    
+
 // ----------------------------------------------------------------------------------------------------------------------------
 // Split the Open Positions tables in 2 tables so that an extract can actually be made easily in order to generate 2 spreadsheets
 // ----------------------------------------------------------------------------------------------------------------------------
-DATA WORK.T_OPEN_POSITIONS1;
-SET WORK.T_OPEN_POSITIONS (where ROW_NUMBER <= 65534) ;
+DATA WORK.T_OPEN_TRANSACTIONS1;
+SET WORK.T_OPEN_TRANSACTIONS (where ROW_NUMBER <= 65534) ;
 RUN;
-DATA WORK.T_OPEN_POSITIONS2;
-SET WORK.T_OPEN_POSITIONS (where ROW_NUMBER > 65534) ;
+DATA WORK.T_OPEN_TRANSACTIONS2;
+SET WORK.T_OPEN_TRANSACTIONS (where ROW_NUMBER > 65534) ;
 RUN;
 
-// Check that the split was actually done correctly
-PROC PRINT DATA= WORK.T_OPEN_POSITIONS1 		  	MAXROWS=10;Title "Standard Open Positions"	; RUN;
-
+// Print a snapshot of the transactions which have been migrated
+PROC PRINT DATA= WORK.T_OPEN_TRANSACTIONS2 	MAXROWS=10;Title "Transactions 2"	; RUN;
+PROC PRINT DATA= WORK.T_OPEN_TRANSACTIONS1 	MAXROWS=10;Title "Transactions 1"	; RUN;
 
 // Create the empty structures
-DATA T_OPEN_POSITIONS1;SET WORK.T_OPEN_POSITIONS1;STOP;RUN;
-DATA T_OPEN_POSITIONS2;SET WORK.T_OPEN_POSITIONS2;STOP;RUN;
-
-// Prepare the empty structure for all the complementary tables
-DATA T_NEGATIVE_OPEN_POSITION  ;SET WORK.T_NEGATIVE_OPEN_POSITION	;STOP;RUN;
-DATA T_PRINC_DIFF_AMOUNT	   ;SET WORK.T_PRINC_DIFF_AMOUNT	  	;STOP;RUN;
-DATA T_CLOSED_POSITIONS		   ;SET WORK.T_CLOSED_POSITIONS      	;STOP;RUN;
-DATA T_POSITION1			   ;SET WORK.T_POSITION1      		  	;STOP;RUN;
+DATA T_OPEN_TRANSACTIONS1;SET WORK.T_OPEN_TRANSACTIONS1;STOP;RUN;
+DATA T_OPEN_TRANSACTIONS2;SET WORK.T_OPEN_TRANSACTIONS2;STOP;RUN;
 
