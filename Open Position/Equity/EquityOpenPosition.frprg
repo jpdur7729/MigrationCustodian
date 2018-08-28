@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-08-27 15:59:29 jpdur"
+//                     Time-stamp: "2018-08-28 16:26:36 jpdur"
 // ------------------------------------------------------------------------------
 
 LIBNAME USER ".";
@@ -18,12 +18,29 @@ LIBNAME USER ".";
 // Let's Add the USERID of the user who created the allocation
 %LET USERID = GetUserInfo(GetUserID(),"IQID1");
                                          
-// Create the SQL Extract                
+// Create the SQL Extract                                  
 %LET SQLQUERY = %SQLQUERY + "select vcfund.fund as InvestorFund, ";
 %LET SQLQUERY = %SQLQUERY + "       sfaaccount.name as InvestorCie, ";
 %LET SQLQUERY = %SQLQUERY + "       coalesce(vcfund.currency1, sfaaccount.currency1) as InvestorCurrency, ";
 %LET SQLQUERY = %SQLQUERY + "       FundIssuer.fund as IssuerFund, ";
 %LET SQLQUERY = %SQLQUERY + "       CieIssuer.name as IssuerCie, ";
+// Add Extra fields which are not included in the extract
+%LET SQLQUERY = %SQLQUERY + "       null as AccountingDate, ";
+%LET SQLQUERY = %SQLQUERY + "       'No'  as Draft, ";
+%LET SQLQUERY = %SQLQUERY + "       'Yes' as Locked, ";
+%LET SQLQUERY = %SQLQUERY + "       'No'  as Cancelled, ";
+%LET SQLQUERY = %SQLQUERY + "       'Yes' as ExcludeFromCash, ";
+%LET SQLQUERY = %SQLQUERY + "       'Yes' as GLManualEntries, ";
+%LET SQLQUERY = %SQLQUERY + "       null  as Valuation, ";
+%LET SQLQUERY = %SQLQUERY + "       null  as Valuation2, ";
+%LET SQLQUERY = %SQLQUERY + "       null  as InvestInvAmount, "; // op.usercurr9
+%LET SQLQUERY = %SQLQUERY + "       null  as InstruInvAmount, "; // op.usercurr8
+%LET SQLQUERY = %SQLQUERY + "       null  as Tranche, ";
+%LET SQLQUERY = %SQLQUERY + "       1     as OpIndex, ";
+%LET SQLQUERY = %SQLQUERY + "       null  as AmountDue, ";
+%LET SQLQUERY = %SQLQUERY + "       null  as AmountDue2, ";
+%LET SQLQUERY = %SQLQUERY + "       'Migrated Open Position'  as Transaction, "; // op.libelle
+// Add Extra fields which are not included in the extract
 %LET SQLQUERY = %SQLQUERY + "       y.* ";
 // %LET SQLQUERY = %SQLQUERY + "  from (select ins.shortname as InstrumentName, ";
 %LET SQLQUERY = %SQLQUERY + "  from (select case substr(ins.shortname,1,1) ";
@@ -52,7 +69,7 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "                      to_date('" & Format(%POSITION_DATE,"d/M/yyyy") &"','DD/MM/YYYY') as TradeDate, ";
 %LET SQLQUERY = %SQLQUERY + "                       'EQ - Purchase/Subscription (w/o Commitment)' as Type, ";
 %LET SQLQUERY = %SQLQUERY + "                       currency as InstrumentCurrency, ";
-// %LET SQLQUERY = %SQLQUERY + "                       -- sum(xprincipal) as ConsoPrinc, ";
+%LET SQLQUERY = %SQLQUERY + "                       sum(xprincipal) as ConsoPrinc, ";
 // %LET SQLQUERY = %SQLQUERY + "                       -- sum(xamount) as ConsoAmount, ";
 // %LET SQLQUERY = %SQLQUERY + "                       -- amount/principal in Investor ccy ";
 // %LET SQLQUERY = %SQLQUERY + "                       -- amount2/principal2 in Instrument ccy ";
@@ -139,6 +156,8 @@ LIBNAME USER ".";
 // To guarantee that the instruments are Equities
 %LET SQLQUERY = %SQLQUERY + "   where InstrumentType in ('OS') ";
 %LET SQLQUERY = %SQLQUERY + "   and vcfund.iqid like '%" & %FUND_IQID & "%' ";
+// In order to be sure that there is a Fund Issuer
+%LET SQLQUERY = %SQLQUERY + "   and vcfund.iqid is not null ";
 
 // // Apply the region filter
 // %LET SQLQUERY = %SQLQUERY + "   and RegionIQID like '%" & %REGION_IQID & "%' ";
