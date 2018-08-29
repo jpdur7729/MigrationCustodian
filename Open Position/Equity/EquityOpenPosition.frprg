@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-08-28 16:26:36 jpdur"
+//                     Time-stamp: "2018-08-29 10:19:12 jpdur"
 // ------------------------------------------------------------------------------
 
 LIBNAME USER ".";
@@ -33,50 +33,54 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "       'Yes' as GLManualEntries, ";
 %LET SQLQUERY = %SQLQUERY + "       null  as Valuation, ";
 %LET SQLQUERY = %SQLQUERY + "       null  as Valuation2, ";
-%LET SQLQUERY = %SQLQUERY + "       null  as InvestInvAmount, "; // op.usercurr9
-%LET SQLQUERY = %SQLQUERY + "       null  as InstruInvAmount, "; // op.usercurr8
+%LET SQLQUERY = %SQLQUERY + "       ConsoAmount   as InvestInvAmount, "; // op.usercurr9
+%LET SQLQUERY = %SQLQUERY + "       ConsoAmount2  as InstruInvAmount, "; // op.usercurr8
 %LET SQLQUERY = %SQLQUERY + "       null  as Tranche, ";
 %LET SQLQUERY = %SQLQUERY + "       1     as OpIndex, ";
 %LET SQLQUERY = %SQLQUERY + "       null  as AmountDue, ";
 %LET SQLQUERY = %SQLQUERY + "       null  as AmountDue2, ";
-%LET SQLQUERY = %SQLQUERY + "       'Migrated Open Position'  as Transaction, "; // op.libelle
+// no Principal for the Equity Open Positions
+%LET SQLQUERY = %SQLQUERY + "       null  as ConsoPrinc, ";
+%LET SQLQUERY = %SQLQUERY + "       null  as ConsoPrinc2, ";
+// %LET SQLQUERY = %SQLQUERY + "       'Migrated Equity Open Position'  as Transaction, "; // op.libelle
+%LET SQLQUERY = %SQLQUERY + "       'Purchase Equity ' || TO_CHAR(y.TradeDate,'dd/MM/YYYY')  as Transaction, "; // op.libelle
 // Add Extra fields which are not included in the extract
-%LET SQLQUERY = %SQLQUERY + "       y.* ";
-// %LET SQLQUERY = %SQLQUERY + "  from (select ins.shortname as InstrumentName, ";
-%LET SQLQUERY = %SQLQUERY + "  from (select case substr(ins.shortname,1,1) ";
-%LET SQLQUERY = %SQLQUERY + "	 		  		when '0' then '''' || ins.shortname ";
-%LET SQLQUERY = %SQLQUERY + "					else 		  	  	  ins.shortname ";
-%LET SQLQUERY = %SQLQUERY + "			    end as InstrumentName, ";
-%LET SQLQUERY = %SQLQUERY + "               ins2.shortname  as IIName4Search, ";
-%LET SQLQUERY = %SQLQUERY + "               ins2.investment, ";
-%LET SQLQUERY = %SQLQUERY + "               OpenList.*, ";
-// Calculate the Historical Exchage Rate to acquire the position at the right price
+%LET SQLQUERY = %SQLQUERY + "       y.* ";                                                
+// %LET SQLQUERY = %SQLQUERY + "  from (select ins.shortname as InstrumentName, ";        
+%LET SQLQUERY = %SQLQUERY + "  from (select case substr(ins.shortname,1,1) ";             
+%LET SQLQUERY = %SQLQUERY + "	 		  		when '0' then '''' || ins.shortname ";    
+%LET SQLQUERY = %SQLQUERY + "					else 		  	  	  ins.shortname ";    
+%LET SQLQUERY = %SQLQUERY + "			    end as InstrumentName, ";                     
+%LET SQLQUERY = %SQLQUERY + "               ins2.shortname  as IIName4Search, ";          
+%LET SQLQUERY = %SQLQUERY + "               ins2.investment, ";                           
+%LET SQLQUERY = %SQLQUERY + "               OpenList.*, ";                                
+// Calculate the Historical Exchage Rate to acquire the position at the right price       
 %LET SQLQUERY = %SQLQUERY + "               case coalesce(ConsoAmount2,0) when 0 then 1 else ConsoAmount/ConsoAmount2 end as Exchange, ";
-%LET SQLQUERY = %SQLQUERY + "               admrole.name    as Region, ";
-%LET SQLQUERY = %SQLQUERY + "               ins.iqregionid  as RegionIQID, ";
-%LET SQLQUERY = %SQLQUERY + "               invest.firm, ";
-%LET SQLQUERY = %SQLQUERY + "               invest.fund, ";
-%LET SQLQUERY = %SQLQUERY + "               instype.code as InstrumentType, ";
-%LET SQLQUERY = %SQLQUERY + "               ins.fund        as FundIssuer, ";
-%LET SQLQUERY = %SQLQUERY + "               ins.account     as CieIssuer ";
-%LET SQLQUERY = %SQLQUERY + "          from vcinvestmentins ins, ";
-%LET SQLQUERY = %SQLQUERY + "               vcinvestmentins ins2, ";
-%LET SQLQUERY = %SQLQUERY + "               admrole, ";
-%LET SQLQUERY = %SQLQUERY + "               vcinvestment invest, ";
-%LET SQLQUERY = %SQLQUERY + "               vcinvestinstype instype, ";
-%LET SQLQUERY = %SQLQUERY + "               (select investmentins, ";
-// %LET SQLQUERY = %SQLQUERY + "                       '31-Dec-17' as TradeDate, ";
+%LET SQLQUERY = %SQLQUERY + "               admrole.name    as Region, ";                 
+%LET SQLQUERY = %SQLQUERY + "               ins.iqregionid  as RegionIQID, ";             
+%LET SQLQUERY = %SQLQUERY + "               invest.firm, ";                               
+%LET SQLQUERY = %SQLQUERY + "               invest.fund, ";                               
+%LET SQLQUERY = %SQLQUERY + "               instype.code as InstrumentType, ";            
+%LET SQLQUERY = %SQLQUERY + "               ins.fund        as FundIssuer, ";             
+%LET SQLQUERY = %SQLQUERY + "               ins.account     as CieIssuer ";               
+%LET SQLQUERY = %SQLQUERY + "          from vcinvestmentins ins, ";                       
+%LET SQLQUERY = %SQLQUERY + "               vcinvestmentins ins2, ";                      
+%LET SQLQUERY = %SQLQUERY + "               admrole, ";                                   
+%LET SQLQUERY = %SQLQUERY + "               vcinvestment invest, ";                       
+%LET SQLQUERY = %SQLQUERY + "               vcinvestinstype instype, ";                   
+%LET SQLQUERY = %SQLQUERY + "               (select investmentins, ";                     
+// %LET SQLQUERY = %SQLQUERY + "                       '31-Dec-17' as TradeDate, ";       
 %LET SQLQUERY = %SQLQUERY + "                      to_date('" & Format(%POSITION_DATE,"d/M/yyyy") &"','DD/MM/YYYY') as TradeDate, ";
 %LET SQLQUERY = %SQLQUERY + "                       'EQ - Purchase/Subscription (w/o Commitment)' as Type, ";
-%LET SQLQUERY = %SQLQUERY + "                       currency as InstrumentCurrency, ";
-%LET SQLQUERY = %SQLQUERY + "                       sum(xprincipal) as ConsoPrinc, ";
-// %LET SQLQUERY = %SQLQUERY + "                       -- sum(xamount) as ConsoAmount, ";
+%LET SQLQUERY = %SQLQUERY + "                       currency as InstrumentCurrency, ";    
+// %LET SQLQUERY = %SQLQUERY + "                       sum(xprincipal) as ConsoPrinc, ";  
+// %LET SQLQUERY = %SQLQUERY + "                       -- sum(xamount) as ConsoAmount, "; 
 // %LET SQLQUERY = %SQLQUERY + "                       -- amount/principal in Investor ccy ";
 // %LET SQLQUERY = %SQLQUERY + "                       -- amount2/principal2 in Instrument ccy ";
 // %LET SQLQUERY = %SQLQUERY + "                       -- amount7/principal7 in Issuer ccy ";
-%LET SQLQUERY = %SQLQUERY + "                       sum(xnbshares) as ConsoShares, ";
+%LET SQLQUERY = %SQLQUERY + "                       sum(xnbshares) as ConsoShares, ";     
 %LET SQLQUERY = %SQLQUERY + "                       case coalesce(sum(xnbshares),0) when 0 then 1 else sum(BuyAmount2)/sum(xnbshares) end as UnitPrice, ";
-%LET SQLQUERY = %SQLQUERY + "                       sum(xprincipal2) as ConsoPrinc2, ";
+// %LET SQLQUERY = %SQLQUERY + "                       sum(xprincipal2) as ConsoPrinc2, ";
 %LET SQLQUERY = %SQLQUERY + "                       sum(xamount2) as ConsoAmount2, ";
 %LET SQLQUERY = %SQLQUERY + "                       sum(BuyAmount2) as ConsoBuyAmount2, ";
 %LET SQLQUERY = %SQLQUERY + "                       case coalesce(sum(BuyAmount2),0) when 0 then 0 else sum(BuyAmount)   /sum(BuyAmount2)*sum(xamount2) end as ConsoAmount, ";

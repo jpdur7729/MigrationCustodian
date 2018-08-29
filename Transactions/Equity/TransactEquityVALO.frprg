@@ -1,0 +1,195 @@
+// ------------------------------------------------------------------------------
+//                     Author    : eFront-BP2S
+//                     Time-stamp: "2018-08-29 13:04:21 jpdur"
+// ------------------------------------------------------------------------------
+
+LIBNAME USER ".";
+
+// Equity Valorisation at a given Date ==> Migration date 31/12/17
+                                                                  
+// ----------------------------------------------------------------------------------------------------------------------------------
+// Use the region as a parameter ==> Default region "Generic Region #4" with the max number of records
+// %PARAM REGION_IQID 	   LABEL="Fund Region" 	 NOTNULL INFORMAT="??PICKID(ADMROLE;NAME)" DEFAULT="00C148A60D2541F4A6DF45164B06983A";
+// NOTNULL does not allow to specify a default value ==> Changed accordingly
+// ----------------------------------------------------------------------------------------------------------------------------------
+%PARAM REGION_IQID 	   LABEL="Fund Region"		 INFORMAT="??PICKID(ADMROLE;NAME)" DEFAULT="00C148A60D2541F4A6DF45164B06983A";
+%PARAM REPORT_DATE      LABEL="Valorisation Date" TYPE=DATE   DEFAULT="31/12/2017" ;
+%PARAM FUND_IQID       LABEL="Fund"          	 INFORMAT="??PICKID(VCFUND;FUND)" ;
+
+// Let's Add the USERID of the user who created the allocation
+%LET USERID = GetUserInfo(GetUserID(),"IQID1");
+
+// Create the SQL Extract
+%LET SQLQUERY = %SQLQUERY + "select vcfund.fund as InvestorFund, ";
+%LET SQLQUERY = %SQLQUERY + "       sfaaccount.name as InvestorCie, ";
+%LET SQLQUERY = %SQLQUERY + "       coalesce(vcfund.currency1, sfaaccount.currency1) as InvestorCurrency, ";
+%LET SQLQUERY = %SQLQUERY + "       FundIssuer.fund as IssuerFund, ";
+%LET SQLQUERY = %SQLQUERY + "       CieIssuer.name as IssuerCie, ";
+// Add Extra fields which are not included in the extract
+// %LET SQLQUERY = %SQLQUERY + "       null as AccountingDate, ";
+%LET SQLQUERY = %SQLQUERY + "       'No'  as Draft, ";
+%LET SQLQUERY = %SQLQUERY + "       'Yes' as Locked, ";
+%LET SQLQUERY = %SQLQUERY + "       'No'  as Cancelled, ";
+%LET SQLQUERY = %SQLQUERY + "       'Yes' as ExcludeFromCash, ";
+%LET SQLQUERY = %SQLQUERY + "       'Yes' as GLManualEntries, ";
+// %LET SQLQUERY = %SQLQUERY + "       null  as Valuation, "; // By default in the extract
+// %LET SQLQUERY = %SQLQUERY + "       null  as Valuation2, ";
+%LET SQLQUERY = %SQLQUERY + "       null   as InvestInvAmount, "; // op.usercurr9
+%LET SQLQUERY = %SQLQUERY + "       null  as InstruInvAmount, "; // op.usercurr8
+%LET SQLQUERY = %SQLQUERY + "       null  as Tranche, ";
+%LET SQLQUERY = %SQLQUERY + "       10    as OpIndex, "; // 1 is used for the Migration of the Equity Position
+%LET SQLQUERY = %SQLQUERY + "       null  as AmountDue, ";
+%LET SQLQUERY = %SQLQUERY + "       null  as AmountDue2, ";
+// no Principal for the Equity Open Positions
+%LET SQLQUERY = %SQLQUERY + "       null  as ConsoPrinc, ";
+%LET SQLQUERY = %SQLQUERY + "       null  as ConsoPrinc2, ";
+%LET SQLQUERY = %SQLQUERY + "       null  as ConsoAmount, ";
+%LET SQLQUERY = %SQLQUERY + "       null  as ConsoAmount2, ";
+%LET SQLQUERY = %SQLQUERY + "       null  as UnitPrice, ";
+%LET SQLQUERY = %SQLQUERY + "       null  as ConsoShares, ";
+// %LET SQLQUERY = %SQLQUERY + "       'Migrated Equity Open Position'  as Transaction, "; // op.libelle
+%LET SQLQUERY = %SQLQUERY + "       'Valorisation Equity ' || TO_CHAR(y.TradeDate,'dd/MM/YYYY')  as Transaction, "; // op.libelle
+%LET SQLQUERY = %SQLQUERY + "       case coalesce(y.valuation2,0) when 0 then 1 else y.valuation/y.valuation2 end as Exchange, ";
+// Add Extra fields which are not included in the extract
+%LET SQLQUERY = %SQLQUERY + "       y.* ";
+%LET SQLQUERY = %SQLQUERY + "  from (select case substr(ins.shortname, 1, 1) ";
+%LET SQLQUERY = %SQLQUERY + "                 when '0' then ";
+%LET SQLQUERY = %SQLQUERY + "                  '''' || ins.shortname ";
+%LET SQLQUERY = %SQLQUERY + "                 else ";
+%LET SQLQUERY = %SQLQUERY + "                  ins.shortname ";
+%LET SQLQUERY = %SQLQUERY + "               end as InstrumentName, ";
+%LET SQLQUERY = %SQLQUERY + "               ins2.shortname as IIName4Search, ";
+%LET SQLQUERY = %SQLQUERY + "               ins2.investment, ";
+%LET SQLQUERY = %SQLQUERY + "               OpenList.*, ";
+// %LET SQLQUERY = %SQLQUERY + "               -- Calculate the Historical Exchage Rate to acquire the position at the right price ";
+// %LET SQLQUERY = %SQLQUERY + "               case coalesce(Amount,0) when 0 then 1 else Amount2/Amount end as Exchange, ";
+%LET SQLQUERY = %SQLQUERY + "               admrole.name   as Region, ";
+%LET SQLQUERY = %SQLQUERY + "               ins.iqregionid as RegionIQID, ";
+%LET SQLQUERY = %SQLQUERY + "               invest.firm, ";
+%LET SQLQUERY = %SQLQUERY + "               invest.fund, ";
+%LET SQLQUERY = %SQLQUERY + "               instype.code   as InstrumentType, ";
+%LET SQLQUERY = %SQLQUERY + "               ins.fund       as FundIssuer, ";
+%LET SQLQUERY = %SQLQUERY + "               ins.account    as CieIssuer ";
+%LET SQLQUERY = %SQLQUERY + "          from vcinvestmentins ins, ";
+%LET SQLQUERY = %SQLQUERY + "               vcinvestmentins ins2, ";
+%LET SQLQUERY = %SQLQUERY + "               admrole, ";
+%LET SQLQUERY = %SQLQUERY + "               vcinvestment invest, ";
+%LET SQLQUERY = %SQLQUERY + "               vcinvestinstype instype, ";
+%LET SQLQUERY = %SQLQUERY + "               (select investmentins, ";
+%LET SQLQUERY = %SQLQUERY + "                       closedate as TradeDate,accountingdate, ";
+%LET SQLQUERY = %SQLQUERY + "                       case typeinvestop ";
+%LET SQLQUERY = %SQLQUERY + "                         when 'SEQ' then 'EQ - Sale/Redemption' ";
+%LET SQLQUERY = %SQLQUERY + "                         when 'PEQ' then 'EQ - Purchase/Subscription (w/o Commitment)' ";
+%LET SQLQUERY = %SQLQUERY + "                         when 'DIV' then 'EQ - Dividend (Cash)' ";
+%LET SQLQUERY = %SQLQUERY + "                         when 'EVA' then 'EQ - Valuation' ";
+%LET SQLQUERY = %SQLQUERY + "                         else typeinvestop ";
+%LET SQLQUERY = %SQLQUERY + "                       end as Type, ";
+%LET SQLQUERY = %SQLQUERY + "                       currency1 as currency, ";
+%LET SQLQUERY = %SQLQUERY + "                       nbshares, ";
+%LET SQLQUERY = %SQLQUERY + "                       principal, ";
+%LET SQLQUERY = %SQLQUERY + "                       amount, ";
+%LET SQLQUERY = %SQLQUERY + "                       amountx, ";
+%LET SQLQUERY = %SQLQUERY + "                       principal2, ";
+%LET SQLQUERY = %SQLQUERY + "                       amount2, ";
+%LET SQLQUERY = %SQLQUERY + "                       amountx2, ";
+%LET SQLQUERY = %SQLQUERY + "                       valuation, ";
+%LET SQLQUERY = %SQLQUERY + "                       valuation2, ";
+%LET SQLQUERY = %SQLQUERY + "                       exchangerate1 ";
+%LET SQLQUERY = %SQLQUERY + "                  from vcinvestmentop op ";
+// %LET SQLQUERY = %SQLQUERY + "                 where closedate = '31-Dec-17' ";
+%LET SQLQUERY = %SQLQUERY + "                  where closedate = to_date('" & Format(%REPORT_DATE,"d/M/yyyy") &"','DD/MM/YYYY') ";
+%LET SQLQUERY = %SQLQUERY + "                   and coalesce(op.draft, 0) = 0 ";
+%LET SQLQUERY = %SQLQUERY + "                   and op.iqdeleted = 0 ";
+%LET SQLQUERY = %SQLQUERY + "                   and coalesce(op.cancelled, 0) = 0 ";
+%LET SQLQUERY = %SQLQUERY + "                   and typeinvestop in ('EVA')) OpenList ";
+%LET SQLQUERY = %SQLQUERY + " ";                                 
+%LET SQLQUERY = %SQLQUERY + "         where openlist.investmentins = ins2.iqid ";
+%LET SQLQUERY = %SQLQUERY + "           and ins.iqid = ins2.accountins ";
+%LET SQLQUERY = %SQLQUERY + "           and ins2.investment = invest.iqid ";
+%LET SQLQUERY = %SQLQUERY + "           and ins.iqregionid = admrole.iqid ";
+%LET SQLQUERY = %SQLQUERY + "           and ins.investinstype = instype.iqid ";
+%LET SQLQUERY = %SQLQUERY + "        ) y ";                      
+%LET SQLQUERY = %SQLQUERY + "  left join sfaaccount ";           
+%LET SQLQUERY = %SQLQUERY + "    on y.firm = sfaaccount.iqid ";
+%LET SQLQUERY = %SQLQUERY + "  left join vcfund ";
+%LET SQLQUERY = %SQLQUERY + "    on y.fund = vcfund.iqid ";
+%LET SQLQUERY = %SQLQUERY + "  left join vcfund FundIssuer ";
+%LET SQLQUERY = %SQLQUERY + "    on y.FundIssuer = FundIssuer.iqid ";
+%LET SQLQUERY = %SQLQUERY + "  left join sfaaccount CieIssuer ";
+%LET SQLQUERY = %SQLQUERY + "    on y.CieIssuer = CieIssuer.iqid ";
+%LET SQLQUERY = %SQLQUERY + " where InstrumentType in ('OS') ";
+%LET SQLQUERY = %SQLQUERY + "   and vcfund.iqid like '%" & %FUND_IQID & "%' ";
+
+// Apply the region filter
+%LET SQLQUERY = %SQLQUERY + "   and vcfund.iqregionid like '%" & %REGION_IQID & "%' ";
+// Apply the region filter based on the region
+%LET SQLQUERY = %SQLQUERY + "   and EXISTS (SELECT 1 FROM ADMDYNROLE WHERE USERID='" & %USERID & "' AND READACCESS<>0 AND ROLEID = vcfund.iqregionid ) ";
+
+// Extract the data using SQL
+PROC SQLIMPORT DATA=WORK.T_EQTY_VALUATIONS SQL=%SQLQUERY ;
+RUN;
+
+// -------------------------------------------------------------------------------------------
+// Let's flag the records from 1 ... as the number of records for Generic Region #4 is >65536
+// -------------------------------------------------------------------------------------------
+DATA WORK.T_EQTY_VALUATIONS;
+	 SET WORK.T_EQTY_VALUATIONS;
+
+	 COLUMN ROW_NUMBER	TYPE=INTEGER;
+
+	 ROW_NUMBER = NZ(LAG(ROW_NUMBER),0)+1;
+	 OUTPUT;
+RUN;
+
+// Let's print the number of records
+%LET NUMBER_RECORDS  = 0;
+PROC MEANS DATA=WORK.T_EQTY_VALUATIONS OUT=WORK.COUNT;
+	 N ROW_NUMBER (NAME=COUNT_ALLOCATIONS);
+RUN;
+
+// Setup the ad-hoc variable
+DATA WORK.COUNT;
+	 SET WORK.COUNT;
+	 %NUMBER_RECORDS = COUNT_ALLOCATIONS;
+RUN;
+
+
+// --------------------------------------
+// Display the results of the extracts
+// --------------------------------------
+
+// Print the number of records
+PROC PRINT ;
+PUT "Total Nb Transactions: " & CSTR(%NUMBER_RECORDS) ;
+RUN;
+
+// -----------------------------------------------------
+// Split the positions because there are more than 65536
+// -----------------------------------------------------
+// Renumber the positions accordingly from 1 to ....
+// -----------------------------------------------------
+DATA WORK.T_EQTY_VALUATIONS;
+	 SET WORK.T_EQTY_VALUATIONS;
+
+	 ROW_NUMBER = NZ(LAG(ROW_NUMBER),0)+1;
+	 OUTPUT;
+RUN;
+
+// ----------------------------------------------------------------------------------------------------------------------------
+// Split the Open Positions tables in 2 tables so that an extract can actually be made easily in order to generate 2 spreadsheets
+// ----------------------------------------------------------------------------------------------------------------------------
+DATA WORK.T_EQTY_VALUATIONS1;
+SET WORK.T_EQTY_VALUATIONS (where ROW_NUMBER <= 65534) ;
+RUN;
+DATA WORK.T_EQTY_VALUATIONS2;
+SET WORK.T_EQTY_VALUATIONS (where ROW_NUMBER > 65534) ;
+RUN;
+
+// Print a snapshot of the transactions which have been migrated
+PROC PRINT DATA= WORK.T_EQTY_VALUATIONS2 	MAXROWS=10;Title "Transactions 2"	; RUN;
+PROC PRINT DATA= WORK.T_EQTY_VALUATIONS1 	MAXROWS=10;Title "Transactions 1"	; RUN;
+
+// Create the empty structures
+DATA T_EQTY_VALUATIONS1;SET WORK.T_EQTY_VALUATIONS1;STOP;RUN;
+DATA T_EQTY_VALUATIONS2;SET WORK.T_EQTY_VALUATIONS2;STOP;RUN;
+
