@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-08-29 14:30:48 jpdur"
+//                     Time-stamp: "2018-08-29 15:24:58 jpdur"
 // ------------------------------------------------------------------------------
 
 LIBNAME USER ".";
@@ -15,13 +15,12 @@ LIBNAME USER ".";
 // Create the corresponding SQL Query
 %LET SQLQUERY = %SQLQUERY + "select case substr(ins.shortname,1,1) ";
 %LET SQLQUERY = %SQLQUERY + "         when '0' then '''' || ins.shortname ";
-%LET SQLQUERY = %SQLQUERY + "         else ins.shortname ";                
+%LET SQLQUERY = %SQLQUERY + "         else ins.shortname ";
 %LET SQLQUERY = %SQLQUERY + "       end as INSTRUMENT, ";
-//%LET SQLQUERY = %SQLQUERY + "select ins.libelle as INSTRUMENT, ";
 %LET SQLQUERY = %SQLQUERY + "       ins.currency1 as CURRENCY, ";
 %LET SQLQUERY = %SQLQUERY + "       fund.fund as FUND_ISSUER, ";
 %LET SQLQUERY = %SQLQUERY + "       issuer.name as CIE_ISSUER, ";
-%LET SQLQUERY = %SQLQUERY + "       case l1.kind ";         
+%LET SQLQUERY = %SQLQUERY + "       case l1.kind ";
 %LET SQLQUERY = %SQLQUERY + "         when 'LINVCASH' then 'LNCASH' ";
 %LET SQLQUERY = %SQLQUERY + "         when 'LCASH'    then 'LNCASH' ";
 %LET SQLQUERY = %SQLQUERY + "         when 'LINVPIK'  then 'LNPIK' ";
@@ -42,10 +41,12 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "       l1.fixingtype as FIXING_TYPE, ";
 %LET SQLQUERY = %SQLQUERY + "       l1.ratefloor as FLOOR, ";
 %LET SQLQUERY = %SQLQUERY + "       l1.floorratestablepct as PERCENTAGE_OF_FLOOR_TABLE, ";
-%LET SQLQUERY = %SQLQUERY + "       l1.floorratestable as FLOOR_RATES_TABLE, ";
+// %LET SQLQUERY = %SQLQUERY + "       l1.floorratestable as FLOOR_RATES_TABLE, ";
+%LET SQLQUERY = %SQLQUERY + "       floorbench.libelle as FLOOR_RATES_TABLE, ";
 %LET SQLQUERY = %SQLQUERY + "       l1.ratecap as CAP, ";
 %LET SQLQUERY = %SQLQUERY + "       l1.capratestablepct as PERCENTAGE_OF_CAP_TABLE, ";
-%LET SQLQUERY = %SQLQUERY + "       l1.capratestable as CAP_RATES_TABLE, ";
+// %LET SQLQUERY = %SQLQUERY + "       l1.capratestable as CAP_RATES_TABLE, ";
+%LET SQLQUERY = %SQLQUERY + "       capbench.libelle as CAP_RATES_TABLE, ";
 %LET SQLQUERY = %SQLQUERY + "       l1.firstdate as FIRST_DATE, ";
 %LET SQLQUERY = %SQLQUERY + "       l1.lastdate as U_LAST_DATE_U_, ";
 %LET SQLQUERY = %SQLQUERY + "       l1.firstinterestdate as FIRST_PAYMENT_DATE, ";
@@ -66,6 +67,12 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "       on ins.fund = fund.iqid ";
 %LET SQLQUERY = %SQLQUERY + "       left join sfaaccount 		issuer ";
 %LET SQLQUERY = %SQLQUERY + "       on ins.account = issuer.iqid ";
+// Translate the name of the floor table and the cap table             
+%LET SQLQUERY = %SQLQUERY + "       left join vcbenchmark floorbench ";
+%LET SQLQUERY = %SQLQUERY + "       on l1.floorratestable = floorbench.iqid ";
+%LET SQLQUERY = %SQLQUERY + "       left join vcbenchmark capbench ";
+%LET SQLQUERY = %SQLQUERY + "       on l1.capratestable = capbench.iqid ";
+
 %LET SQLQUERY = %SQLQUERY + " where accountins is null ";
 
 // We need to check that the type of events is only the 2 types of events flagged
