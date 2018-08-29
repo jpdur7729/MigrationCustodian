@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-08-27 14:10:34 jpdur"
+//                     Time-stamp: "2018-08-29 14:30:48 jpdur"
 // ------------------------------------------------------------------------------
 
 LIBNAME USER ".";
@@ -13,9 +13,9 @@ LIBNAME USER ".";
 %LET USERID = GetUserInfo(GetUserID(),"IQID1");
 
 // Create the corresponding SQL Query
-%LET SQLQUERY = %SQLQUERY + "select case substr(ins.libelle,1,1) ";
-%LET SQLQUERY = %SQLQUERY + "         when '0' then '''' || ins.libelle ";
-%LET SQLQUERY = %SQLQUERY + "         else ins.libelle ";
+%LET SQLQUERY = %SQLQUERY + "select case substr(ins.shortname,1,1) ";
+%LET SQLQUERY = %SQLQUERY + "         when '0' then '''' || ins.shortname ";
+%LET SQLQUERY = %SQLQUERY + "         else ins.shortname ";                
 %LET SQLQUERY = %SQLQUERY + "       end as INSTRUMENT, ";
 //%LET SQLQUERY = %SQLQUERY + "select ins.libelle as INSTRUMENT, ";
 %LET SQLQUERY = %SQLQUERY + "       ins.currency1 as CURRENCY, ";
@@ -23,8 +23,12 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "       issuer.name as CIE_ISSUER, ";
 %LET SQLQUERY = %SQLQUERY + "       case l1.kind ";         
 %LET SQLQUERY = %SQLQUERY + "         when 'LINVCASH' then 'LNCASH' ";
+%LET SQLQUERY = %SQLQUERY + "         when 'LCASH'    then 'LNCASH' ";
 %LET SQLQUERY = %SQLQUERY + "         when 'LINVPIK'  then 'LNPIK' ";
-%LET SQLQUERY = %SQLQUERY + "       end as TYPE, ";         
+%LET SQLQUERY = %SQLQUERY + "         when 'LPIK'     then 'LNPIK' ";
+%LET SQLQUERY = %SQLQUERY + "         when 'BLPIK'    then 'LNPIK' ";
+%LET SQLQUERY = %SQLQUERY + "       end as TYPE, ";
+%LET SQLQUERY = %SQLQUERY + "       l1.kind as OldType, ";
 %LET SQLQUERY = %SQLQUERY + "       l1.referenceindex as REFERENCE_INDEX, ";
 %LET SQLQUERY = %SQLQUERY + "       l1.daysperyear as DAYS_YEAR_BASIS, ";
 %LET SQLQUERY = %SQLQUERY + "       l1.baserate as BASE_RATE, ";
@@ -39,7 +43,7 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "       l1.ratefloor as FLOOR, ";
 %LET SQLQUERY = %SQLQUERY + "       l1.floorratestablepct as PERCENTAGE_OF_FLOOR_TABLE, ";
 %LET SQLQUERY = %SQLQUERY + "       l1.floorratestable as FLOOR_RATES_TABLE, ";
-%LET SQLQUERY = %SQLQUERY + "       l1.ratecap as CAP, ";   
+%LET SQLQUERY = %SQLQUERY + "       l1.ratecap as CAP, ";
 %LET SQLQUERY = %SQLQUERY + "       l1.capratestablepct as PERCENTAGE_OF_CAP_TABLE, ";
 %LET SQLQUERY = %SQLQUERY + "       l1.capratestable as CAP_RATES_TABLE, ";
 %LET SQLQUERY = %SQLQUERY + "       l1.firstdate as FIRST_DATE, ";
@@ -52,26 +56,28 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "       l1.paymentdateoffset as PAYMENT_OFFSET, ";
 %LET SQLQUERY = %SQLQUERY + "       l1.paymentdateoffsettype as OFFSET_IN_DAYS_MONTH, ";
 %LET SQLQUERY = %SQLQUERY + "       l1.lastdayinterest as INTEREST_ON_LAST_DAY, ";
+// Fields Added on Aug 29th
+%LET SQLQUERY = %SQLQUERY + "       l1.explicitperiods as EXPLICIT_PERIOD, ";
 %LET SQLQUERY = %SQLQUERY + "       'Yes' as ACCRUALS_ON_LAST_DAY ";
 %LET SQLQUERY = %SQLQUERY + "  from vcinvestmentins ins ";
 %LET SQLQUERY = %SQLQUERY + "    join vcinvestinsrate l1 ";
 %LET SQLQUERY = %SQLQUERY + "  on ins.iqid = l1.investmentins ";
 %LET SQLQUERY = %SQLQUERY + "       left join vcfund          fund ";
-%LET SQLQUERY = %SQLQUERY + "       on ins.fund = fund.iqid ";  
+%LET SQLQUERY = %SQLQUERY + "       on ins.fund = fund.iqid ";
 %LET SQLQUERY = %SQLQUERY + "       left join sfaaccount 		issuer ";
 %LET SQLQUERY = %SQLQUERY + "       on ins.account = issuer.iqid ";
 %LET SQLQUERY = %SQLQUERY + " where accountins is null ";
 
 // We need to check that the type of events is only the 2 types of events flagged
-%LET SQLQUERY = %SQLQUERY + "   and l1.kind in ('LINVCASH','LINVPIK') ";
+%LET SQLQUERY = %SQLQUERY + "   and l1.kind in ('LINVCASH','LINVPIK','LCASH','LPIK','BLPIK') ";
 
 // Apply the region filter
 %LET SQLQUERY = %SQLQUERY + "   and ins.iqregionid like '%" & %REGION_IQID & "%'";
 // Apply the region filter based on the characteristics of the end-user
 %LET SQLQUERY = %SQLQUERY + "   and EXISTS (SELECT 1 FROM ADMDYNROLE WHERE USERID='" & %USERID & "' AND READACCESS<>0 AND ROLEID = ins.iqregionid) ";
-                                                                  
-// Extract the data using SQL                                     
-PROC SQLIMPORT DATA=WORK.T_LOANEVENTS SQL=%SQLQUERY ;             
+
+// Extract the data using SQL
+PROC SQLIMPORT DATA=WORK.T_LOANEVENTS SQL=%SQLQUERY ;
 RUN;                                                              
                                                                   
 // Debug to check that data has been found                        
