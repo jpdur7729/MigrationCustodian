@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-08-30 18:05:07 jpdur"
+//                     Time-stamp: "2018-08-30 18:57:53 jpdur"
 // ------------------------------------------------------------------------------
 
 LIBNAME USER ".";
@@ -15,21 +15,27 @@ LIBNAME USER ".";
 %LET USERID = GetUserInfo(GetUserID(),"IQID1");      
                                                      
 // Create the SQL Extract                            
-%LET SQLQUERY = %SQLQUERY + "select subs.LIBELLE as IALibelle, ";
+// %LET SQLQUERY = %SQLQUERY + "select subs.LIBELLE as IALibelle, ";
+%LET SQLQUERY = %SQLQUERY + "select fundinvestor.fund as Subscriber, ";
 %LET SQLQUERY = %SQLQUERY + "       fund.fund as InvesteeFund,fund.currency1 as InvesteeCCY, ";
 // %LET SQLQUERY = %SQLQUERY + "       '31-Dec-17' as TradeDate, ";
 %LET SQLQUERY = %SQLQUERY + "       to_date('" & Format(%POSITION_DATE,"d/M/yyyy") &"','DD/MM/YYYY') as TradeDate, ";
 %LET SQLQUERY = %SQLQUERY + "       fundinvestor.fund as InvestorFund,fundinvestor.currency1 as InvestorCCY, ";
 %LET SQLQUERY = %SQLQUERY + "       fundinvestor.iqregionid as RegionIQID, ";
-%LET SQLQUERY = %SQLQUERY + "       admrole.name as RegionName, ";
+%LET SQLQUERY = %SQLQUERY + "       admrole.name as Region, ";
+%LET SQLQUERY = %SQLQUERY + "       fshare.libelle as ShareClass, ";
+%LET SQLQUERY = %SQLQUERY + "       1 as OpIndex, ";
+%LET SQLQUERY = %SQLQUERY + "       'No' as Draft, ";
+%LET SQLQUERY = %SQLQUERY + "       'IF: Commitment' as Type, ";
 %LET SQLQUERY = %SQLQUERY + "       sum(committedamount) as CommittedAmount ";
 %LET SQLQUERY = %SQLQUERY + "  from vcsubscrfundopshare fopsha, ";
 %LET SQLQUERY = %SQLQUERY + "       vcsubscriber        subs, ";
 %LET SQLQUERY = %SQLQUERY + "       vcfundop            fundop, ";
 %LET SQLQUERY = %SQLQUERY + "       VCSUBSCRVEHICUL     vehicul, ";
 %LET SQLQUERY = %SQLQUERY + "       vcfund              fund, ";
+%LET SQLQUERY = %SQLQUERY + "       vcfundshare 		fshare, ";
 %LET SQLQUERY = %SQLQUERY + "       vcfund              fundinvestor, ";
-%LET SQLQUERY = %SQLQUERY + "       admrole ";       
+%LET SQLQUERY = %SQLQUERY + "       admrole ";      
 %LET SQLQUERY = %SQLQUERY + " where fopsha.subscriber = subs.iqid ";
 %LET SQLQUERY = %SQLQUERY + "   and fopsha.fundop = fundop.iqid ";
 %LET SQLQUERY = %SQLQUERY + "   and fopsha.iqdeleted = 0 ";
@@ -38,30 +44,35 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "   and subs.MAINVEHICULE = vehicul.IQID ";
 %LET SQLQUERY = %SQLQUERY + "   and vehicul.FUND =fundinvestor.iqid ";
 //%LET SQLQUERY = %SQLQUERY + "   --and fundinvestor.FUND = 'Fund 15140' ";
-%LET SQLQUERY = %SQLQUERY + "   and fundinvestor.iqid like '" & %FUND_IQID &"' ";
+%LET SQLQUERY = %SQLQUERY + "   and fundinvestor.iqid like '%" & %FUND_IQID & "%' ";
 %LET SQLQUERY = %SQLQUERY + "   and fopsha.subscriber = subs.iqid ";
+%LET SQLQUERY = %SQLQUERY + "   and fopsha.fundshare = fshare.iqid ";
 %LET SQLQUERY = %SQLQUERY + "   and fundop.fund = fund.iqid ";
 %LET SQLQUERY = %SQLQUERY + "   and committedamount is not null ";
 //%LET SQLQUERY = %SQLQUERY + "   and fundop.closedate <= '31-dec-17' ";
 %LET SQLQUERY = %SQLQUERY + "   and fundop.closedate <= to_date('" & Format(%POSITION_DATE,"d/M/yyyy") &"','DD/MM/YYYY') ";
 %LET SQLQUERY = %SQLQUERY + "   and admrole.iqid = fundinvestor.iqregionid ";
 // We verify that the fund is an Investee Fund i.e. there is no accounting managed on the fund
-%LET SQLQUERY = %SQLQUERY + "   and fundinvesrtor.iqid not in (select fund from glentitychart where iqdeleted = 0 and fund is not null) ";
-                                                     
-// Apply the region filter
+%LET SQLQUERY = %SQLQUERY + "   and fundinvestor.iqid not in (select fund from glentitychart where iqdeleted = 0 and fund is not null) ";
+                                                                  
+// Apply the region filter                                        
 %LET SQLQUERY = %SQLQUERY + "   and fundinvestor.iqregionid like '%" & %REGION_IQID & "%' ";
-// Apply the region filter based on the region
+// Apply the region filter based on the region                    
 %LET SQLQUERY = %SQLQUERY + "   and EXISTS (SELECT 1 FROM ADMDYNROLE WHERE USERID='" & %USERID & "' AND READACCESS<>0 AND ROLEID = fundinvestor.iqregionid ) ";
-
-%LET SQLQUERY = %SQLQUERY + " group by fund.fund, fund.currency1,subs.libelle,fundinvestor.fund,fundinvestor.currency1,fundinvestor.iqregionid,admrole.name ";
+                                                                  
+//%LET SQLQUERY = %SQLQUERY + " group by fund.fund, fund.currency1,subs.libelle,fundinvestor.fund,fundinvestor.currency1,fundinvestor.iqregionid,admrole.name ";
+%LET SQLQUERY = %SQLQUERY + " group by fund.fund,fshare.libelle,fund.currency1,fundinvestor.fund,fundinvestor.currency1,fundinvestor.iqregionid,admrole.name ";
 %LET SQLQUERY = %SQLQUERY + " having sum(committedamount) <> 0 ";
 
+// Debug: Test Generated SQL Query
+// PROC PRINT ; PUT %SQLQUERY ; RUN; 
+
 // Extract the data using SQL
-PROC SQLIMPORT DATA=WORK.T_OPEN_COMMITTMENT SQL=%SQLQUERY ;
+PROC SQLIMPORT DATA=WORK.T_OPEN_COMMITMENT SQL=%SQLQUERY ;
 RUN;
 
 // Print a couple of records for tests
-PROC PRINT DATA= WORK.T_OPEN_COMMITTMENT	MAXROWS=10;Title "Open Commitments"		; RUN;
+PROC PRINT DATA= WORK.T_OPEN_COMMITMENT	MAXROWS=10;Title "Open Commitments"		; RUN;
 
 // Prepare the empty structure for all the complementary tables
-DATA T_OPEN_COMMITTMENT  ;SET WORK.T_OPEN_COMMITTMENT	;STOP;RUN;
+DATA T_OPEN_COMMITMENT  ;SET WORK.T_OPEN_COMMITMENT	;STOP;RUN;
