@@ -1,41 +1,50 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-09-01 08:28:20 jpdur"
+//                     Time-stamp: "2018-09-01 13:18:35 jpdur"
 // ------------------------------------------------------------------------------
 
 // V1: Aug 30th was working based on the Underlying Fund
-// V2: Aug 31st is working based on the Investor Fund
+// --------------------------------------------------------------------
+// V2: Aug 31st is working based on the Investor Fund                  
 // 	   That forces the index to be defined by type of operation 1 // Commitment
-//	   The commitment in investor currency is also added into the mix
-//	   Added the committed quantity
-                                                                     
-LIBNAME USER ".";                                                    
-                                                                     
+//	   The commitment in investor currency is also added into the mix  
+//	   Added the committed quantity                                    
+// --------------------------------------------------------------------
+// v3: Fund		Commitment ==> COMMITTEDAMOUNT
+// 	   Share 	Commitment ==> COMMITTEDAMOUNT1
+// 	   Investor Commitment ==> COMMITTEDAMOUNT2
+// --------------------------------------------------------------------
+                           
+LIBNAME USER ".";          
+                           
 // Use the region as a parameter ==> Default region "Generic Region #4" with the max number of records
 %PARAM REGION_IQID 	   LABEL="Region of Fund Investor" 		 INFORMAT="??PICKID(ADMROLE;NAME)" ;
 %PARAM POSITION_DATE   LABEL="Position Date" 		 		 TYPE=DATE   DEFAULT="31/12/2017"  ;
 // Default fund is "Fund 15140" in anonynised DB which is a FoF
 %PARAM FUND_IQID 	   LABEL="Fund Investor"			  	 INFORMAT="??PICKID(VCFUND;FUND)"  DEFAULT = "8816CE0D56FE49A59E8FAA6084BD12AB" ;
-                                                                     
-// Let's Add the USERID of the user who created the allocation       
-%LET USERID = GetUserInfo(GetUserID(),"IQID1");                      
-                                                                     
-// Create the SQL Extract                                            
-// %LET SQLQUERY = %SQLQUERY + "select subs.LIBELLE as IALibelle, "; 
+                           
+// Let's Add the USERID of the user who created the allocation
+%LET USERID = GetUserInfo(GetUserID(),"IQID1");
+                           
+// Create the SQL Extract  
+// %LET SQLQUERY = %SQLQUERY + "select subs.LIBELLE as IALibelle, ";
 %LET SQLQUERY = %SQLQUERY + "select fundinvestor.fund as Subscriber, ";
 %LET SQLQUERY = %SQLQUERY + "       fund.fund as InvesteeFund,fund.currency1 as InvesteeCCY, ";
 // %LET SQLQUERY = %SQLQUERY + "       '31-Dec-17' as TradeDate, ";
 %LET SQLQUERY = %SQLQUERY + "       to_date('" & Format(%POSITION_DATE,"d/M/yyyy") &"','DD/MM/YYYY') as TradeDate, ";
 %LET SQLQUERY = %SQLQUERY + "       fundinvestor.fund as InvestorFund,fundinvestor.currency1 as InvestorCCY, ";
-%LET SQLQUERY = %SQLQUERY + "       fundinvestor.iqregionid as RegionIQID, ";                       
-%LET SQLQUERY = %SQLQUERY + "       admrole.name as Region, ";                                      
-%LET SQLQUERY = %SQLQUERY + "       fshare.libelle as ShareClass, ";                                
-%LET SQLQUERY = %SQLQUERY + "       1 as OpIndex, ";                                                
-%LET SQLQUERY = %SQLQUERY + "       'No' as Draft, ";                                               
-%LET SQLQUERY = %SQLQUERY + "       'IF: Commitment' as Type, ";                                    
+%LET SQLQUERY = %SQLQUERY + "       fundinvestor.iqregionid as RegionIQID, ";
+%LET SQLQUERY = %SQLQUERY + "       admrole.name as Region, ";
+%LET SQLQUERY = %SQLQUERY + "       fshare.libelle as ShareClass, ";
+%LET SQLQUERY = %SQLQUERY + "       1 as OpIndex, ";
+%LET SQLQUERY = %SQLQUERY + "       'No' as Draft, ";
+%LET SQLQUERY = %SQLQUERY + "       'IF: Commitment' as Type, ";
+%LET SQLQUERY = %SQLQUERY + "       'Yes' as ExcludeFromCash, ";
+%LET SQLQUERY = %SQLQUERY + "       'Yes' as GLManualEntries, ";
 %LET SQLQUERY = %SQLQUERY + "       'Migration Total Commitment ' || TO_CHAR(to_date('" & Format(%POSITION_DATE,"d/M/yyyy") &"','DD/MM/YYYY'),'dd/MM/YYYY') as Description, ";
 %LET SQLQUERY = %SQLQUERY + "       sum(committedshares)  as CommittedShares, ";
 %LET SQLQUERY = %SQLQUERY + "       sum(committedamount)  as CommittedAmount, ";
+%LET SQLQUERY = %SQLQUERY + "       sum(committedamount1) as CommittedAmount1, ";
 %LET SQLQUERY = %SQLQUERY + "       sum(committedamount2) as CommittedAmount2, ";
 %LET SQLQUERY = %SQLQUERY + "       case coalesce(sum(committedamount),0.0) when 0 then 1 else sum(committedamount2)/sum(committedamount) end as Exchange ";
 %LET SQLQUERY = %SQLQUERY + "  from vcsubscrfundopshare fopsha, ";
