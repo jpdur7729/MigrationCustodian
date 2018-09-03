@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-08-27 15:22:24 jpdur"
+//                     Time-stamp: "2018-09-03 17:21:20 jpdur"
 // ------------------------------------------------------------------------------
 
 LIBNAME USER ".";
@@ -26,6 +26,20 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "       coalesce(vcfund.currency1, sfaaccount.currency1) as InvestorCurrency, ";
 %LET SQLQUERY = %SQLQUERY + "       FundIssuer.fund as IssuerFund, ";
 %LET SQLQUERY = %SQLQUERY + "       CieIssuer.name as IssuerCie, ";
+%LET SQLQUERY = %SQLQUERY + "       0.0 as Valuation, ";
+%LET SQLQUERY = %SQLQUERY + "       0.0 as Valuation2, ";
+%LET SQLQUERY = %SQLQUERY + "       1   as OpIndex, ";
+%LET SQLQUERY = %SQLQUERY + "       'Yes'   as GLManualEntries, ";
+%LET SQLQUERY = %SQLQUERY + "       'Yes'   as ExcludeFromCash, ";
+%LET SQLQUERY = %SQLQUERY + "       'No'    as Locked, ";
+%LET SQLQUERY = %SQLQUERY + "       'No'    as Draft, ";
+%LET SQLQUERY = %SQLQUERY + "       null    as ConsoShares, ";
+%LET SQLQUERY = %SQLQUERY + "       null    as UnitPrice, ";
+%LET SQLQUERY = %SQLQUERY + "       null    as AmountDue, ";
+%LET SQLQUERY = %SQLQUERY + "       null    as AmountDue2, ";
+%LET SQLQUERY = %SQLQUERY + "       ConsoAmount   as InvestInvAmount, "; // op.usercurr9
+%LET SQLQUERY = %SQLQUERY + "       ConsoAmount2  as InstruInvAmount, "; // op.usercurr8
+// %LET SQLQUERY = %SQLQUERY + "       null    as Tranche, "; // Not currently managed
 %LET SQLQUERY = %SQLQUERY + "       y.* ";
 // %LET SQLQUERY = %SQLQUERY + "  from (select ins.shortname as InstrumentName, ";
 %LET SQLQUERY = %SQLQUERY + "  from (select case substr(ins.shortname,1,1) ";
@@ -52,8 +66,8 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "                      to_date('" & Format(%POSITION_DATE,"d/M/yyyy") &"','DD/MM/YYYY') as TradeDate, ";
 %LET SQLQUERY = %SQLQUERY + "                       'BD - Purchase/Subscription (w/o Commitment)' as Type, ";
 %LET SQLQUERY = %SQLQUERY + "                       currency as InstrumentCurrency, ";
-// %LET SQLQUERY = %SQLQUERY + "                       -- sum(xprincipal) as ConsoPrinc, ";
-// %LET SQLQUERY = %SQLQUERY + "                       -- sum(xamount) as ConsoAmount, ";
+%LET SQLQUERY = %SQLQUERY + "                       sum(xprincipal) as ConsoPrinc, ";
+%LET SQLQUERY = %SQLQUERY + "                       sum(xamount) as ConsoAmount, ";
 // %LET SQLQUERY = %SQLQUERY + "                       -- amount/principal in Investor ccy ";
 // %LET SQLQUERY = %SQLQUERY + "                       -- amount2/principal2 in Instrument ccy ";
 // %LET SQLQUERY = %SQLQUERY + "                       -- amount7/principal7 in Issuer ccy ";
@@ -277,30 +291,4 @@ DATA T_NEGATIVE_OPEN_POSITION  ;SET WORK.T_NEGATIVE_OPEN_POSITION	;STOP;RUN;
 DATA T_PRINC_DIFF_AMOUNT	   ;SET WORK.T_PRINC_DIFF_AMOUNT	  	;STOP;RUN;
 DATA T_CLOSED_POSITIONS		   ;SET WORK.T_CLOSED_POSITIONS      	;STOP;RUN;
 DATA T_POSITION1			   ;SET WORK.T_POSITION1      		  	;STOP;RUN;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
