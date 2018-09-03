@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-09-01 09:09:27 jpdur"
+//                     Time-stamp: "2018-09-03 07:26:45 jpdur"
 // ------------------------------------------------------------------------------
 
 LIBNAME USER ".";
@@ -13,7 +13,7 @@ LIBNAME USER ".";
 // NOTNULL does not allow to specify a default value ==> Changed accordingly
 // ----------------------------------------------------------------------------------------------------------------------------------
 %PARAM REGION_IQID 	   LABEL="Fund Region"		 INFORMAT="??PICKID(ADMROLE;NAME)" DEFAULT="00C148A60D2541F4A6DF45164B06983A";
-%PARAM REPORT_DATE      LABEL="Valorisation Date" TYPE=DATE   DEFAULT="31/12/2017" ;
+%PARAM REPORT_DATE     LABEL="Valorisation Date" TYPE=DATE   DEFAULT="31/12/2017" ;
 %PARAM FUND_IQID       LABEL="Fund"          	 INFORMAT="??PICKID(VCFUND;FUND)" ;
 
 // Let's Add the USERID of the user who created the allocation
@@ -102,14 +102,14 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "                   and op.iqdeleted = 0 ";
 %LET SQLQUERY = %SQLQUERY + "                   and coalesce(op.cancelled, 0) = 0 ";
 %LET SQLQUERY = %SQLQUERY + "                   and typeinvestop in ('EVA')) OpenList ";
-%LET SQLQUERY = %SQLQUERY + " ";                                 
+%LET SQLQUERY = %SQLQUERY + " ";
 %LET SQLQUERY = %SQLQUERY + "         where openlist.investmentins = ins2.iqid ";
 %LET SQLQUERY = %SQLQUERY + "           and ins.iqid = ins2.accountins ";
 %LET SQLQUERY = %SQLQUERY + "           and ins2.investment = invest.iqid ";
 %LET SQLQUERY = %SQLQUERY + "           and ins.iqregionid = admrole.iqid ";
 %LET SQLQUERY = %SQLQUERY + "           and ins.investinstype = instype.iqid ";
-%LET SQLQUERY = %SQLQUERY + "        ) y ";                      
-%LET SQLQUERY = %SQLQUERY + "  left join sfaaccount ";           
+%LET SQLQUERY = %SQLQUERY + "        ) y ";
+%LET SQLQUERY = %SQLQUERY + "  left join sfaaccount ";
 %LET SQLQUERY = %SQLQUERY + "    on y.firm = sfaaccount.iqid ";
 %LET SQLQUERY = %SQLQUERY + "  left join vcfund ";
 %LET SQLQUERY = %SQLQUERY + "    on y.fund = vcfund.iqid ";
