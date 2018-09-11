@@ -1,11 +1,17 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-08-21 08:17:06 jpdur"
+//                     Time-stamp: "2018-09-10 13:50:21 jpdur"
 // ------------------------------------------------------------------------------
+
+// ------------------------------------------------------------------------------------------------------
+// Sept 10th - Adding the PS (Preferred Shared) in FIC which are remapped into Equity in FIA             
+// 			   Adding 4 extra fields (InstrumentCategory, CleanPrice, PriceExpressionMethod, BondNature  
+//			   Modifying nominal
+// ------------------------------------------------------------------------------------------------------
 
 LIBNAME USER ".";
 
-// Use the region as a parameter                                      
+// Use the region as a parameter
 %PARAM REGION_IQID LABEL="Region" INFORMAT="??PICKID(ADMROLE;NAME)" DEFAULT="00C148A60D2541F4A6DF45164B06983A" ;
 
 // Let's Add the USERID of the user who created the allocation
@@ -17,6 +23,8 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "         when 'LINV' then ";
 %LET SQLQUERY = %SQLQUERY + "          'Investment Loan' ";
 %LET SQLQUERY = %SQLQUERY + "         when 'OS' then ";
+%LET SQLQUERY = %SQLQUERY + "          'Equity' ";
+%LET SQLQUERY = %SQLQUERY + "         when 'PS' then ";
 %LET SQLQUERY = %SQLQUERY + "          'Equity' ";
 %LET SQLQUERY = %SQLQUERY + "         when 'LOAN' then ";
 %LET SQLQUERY = %SQLQUERY + "          'Investment Loan' ";
@@ -33,8 +41,24 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "         else ";
 %LET SQLQUERY = %SQLQUERY + "          'Yes' ";
 %LET SQLQUERY = %SQLQUERY + "       end as RegulatedMarket, ";
-%LET SQLQUERY = %SQLQUERY + "       coalesce(ins.usernum1, 1) as nominal, ";
-%LET SQLQUERY = %SQLQUERY + "       ins.libelle as CompleteName ";
+%LET SQLQUERY = %SQLQUERY + "       ins.libelle as CompleteName, ";
+// -------------------------------------------------------
+// Add the class from the vcinvestinstype
+// Instrument Category is vcinvestmentins.usertext2
+// nominal ... previously usernum1 now facevalue (Sept 10th)
+// -------------------------------------------------------
+%LET SQLQUERY = %SQLQUERY + "       coalesce(ins.facevalue, 1) as nominal, ";
+%LET SQLQUERY = %SQLQUERY + "       vcinvestinstype.class1 as InstrumentCategory, ";
+//%LET SQLQUERY = %SQLQUERY + "       null as CouponType, ";
+%LET SQLQUERY = %SQLQUERY + "       null as DirtyCleanPrice, ";
+%LET SQLQUERY = %SQLQUERY + "       ins.pricetype as PriceExpressionMethod, ";
+%LET SQLQUERY = %SQLQUERY + "       case vcinvestinstype.code ";
+%LET SQLQUERY = %SQLQUERY + "       when 'BOND' then case ins.usertext9 ";
+%LET SQLQUERY = %SQLQUERY + "                        when 'FIXED'    then 'Fixed rate bond' ";
+%LET SQLQUERY = %SQLQUERY + "                        when 'VARIABLE' then 'Floating rate bond' ";
+%LET SQLQUERY = %SQLQUERY + "       				 when 'REVISED'  then 'Revisable rate bond' ";
+%LET SQLQUERY = %SQLQUERY + "                        end ";
+%LET SQLQUERY = %SQLQUERY + "       end as BondNature ";
 %LET SQLQUERY = %SQLQUERY + "       ,ins.isin ";
 %LET SQLQUERY = %SQLQUERY + "       ,case ins.usertext10 ";
 %LET SQLQUERY = %SQLQUERY + "             when 'LT' then 'Long Term Holding' ";
@@ -52,13 +76,13 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "  left join vcinvestinstype ";
 %LET SQLQUERY = %SQLQUERY + "    on ins.investinstype = vcinvestinstype.iqid ";
 %LET SQLQUERY = %SQLQUERY + " where ins.accountins is null ";
-%LET SQLQUERY = %SQLQUERY + "   and vcinvestinstype.code in ('LINV', 'OS', 'LOAN','BOND') ";
+%LET SQLQUERY = %SQLQUERY + "   and vcinvestinstype.code in ('LINV', 'OS', 'PS', 'LOAN', 'BOND') ";
 %LET SQLQUERY = %SQLQUERY + "   and ins.iqdeleted = 0 ";
 
 // Updated version to filter out instruments with no transactions
-%LET SQLQUERY = %SQLQUERY + "   and ins.iqid in ";               
+%LET SQLQUERY = %SQLQUERY + "   and ins.iqid in ";
 %LET SQLQUERY = %SQLQUERY + "       (select distinct accountins ";
-%LET SQLQUERY = %SQLQUERY + "          from vcinvestmentins ";   
+%LET SQLQUERY = %SQLQUERY + "          from vcinvestmentins ";
 %LET SQLQUERY = %SQLQUERY + "         where accountins is not null ";
 %LET SQLQUERY = %SQLQUERY + "           and iqdeleted = 0 ";
 %LET SQLQUERY = %SQLQUERY + "           and iqid in (select distinct investmentins ";
@@ -66,7 +90,7 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "                         where iqdeleted = 0 ";
 %LET SQLQUERY = %SQLQUERY + "                           and coalesce(draft, 0) = 0 ";
 %LET SQLQUERY = %SQLQUERY + "                           and coalesce(cancelled, 0) = 0)) ";
-                                                                 
+
 // // Filter out all instruments for which  there is non transactions
 // %LET SQLQUERY = %SQLQUERY + "and ins.iqid not in ( ";
 // %LET SQLQUERY = %SQLQUERY + "select ins.iqid ";
@@ -81,6 +105,9 @@ LIBNAME USER ".";
 // Apply the region filter based on the characteristics of the end-user
 %LET SQLQUERY = %SQLQUERY + "   and EXISTS (SELECT 1 FROM ADMDYNROLE WHERE USERID='" & %USERID & "' AND READACCESS<>0 AND ROLEID = ins.iqregionid) ";
 
+
+// Debug
+// PROC PRINT; PUT %SQLQUERY; RUN; 
 
 // Extract the data using SQL
 PROC SQLIMPORT DATA=WORK.T_INSTRUMENTS SQL=%SQLQUERY ;
@@ -146,9 +173,90 @@ DATA T_INSTRUMENTS1; SET WORK.T_INSTRUMENTS1; STOP; RUN;
 DATA T_INSTRUMENTS2; SET WORK.T_INSTRUMENTS2; STOP; RUN;
 
 
+// // ------------------------------------------------------------------------
+// // List of all Instruments Category as found in the definition of the UDF  
+// // value of vcinvestmentins.usertext2
+// // ------------------------------------------------------------------------
+// CEQTY-001;Preferred Shares{F}Actions Préférentielles
+// CEQTY-002;Ordinary Shares{F}Actions ordinaires
+// UCI-001;UCI{F}OPC
+// UCI-002;UCITS{F}UCITS
+// BOND-001;OAT
+// BOND-002;Plain Vanilla Bonds{F}Obligations simples
+// BOND-003;BTAN
+// BOND-004;BMTN
+// BOND-008;EMTN
+// BOND-005;Certificate of Deposit CD{F}Certificat de Dépôt
+// BOND-006;Bons du Trésor à taux fixe et à intérêt précompté BTF
+// BOND-007;Treasury Bill{F}Billet de Trésorerie
+// CBOND-001;Vanilla
+// CBOND-002;OCEANE
+// CBOND-003;ORNANE
+// CBOND-004;Exchangeable Bond
+// WARR-001;Attribution
+// SUBRIGHT-005;Subscription voucher
+// SUBRIGHT-001;Subscription right{F}Droit de Souscription
+// SUBRIGHT-002;Optional right
+// SUBRIGHT-004;Free attribution
+// OPRIGHT-001;Stock option{F}Option sur action
+// OPRIGHT-002;Currency Option{F}Option sur indice
+// OPRIGHT-003;Bond Option{F}Option sur obligation{
+// FUTURE-001;Commodities Future
+// FUTURE-002;Stock index Future
+// INVEST_LOANS-005;Investment Loan
+// INVEST_LOANS-001;Bank Loan
+// INVEST_LOANS-002;Associate Loan
+// INVEST_LOANS-003;Overdraft{F}Avance en compte courant
+// INVEST_LOANS-004;Bridge Loan
+// INVEST_LOANS-006;Delayed Draw Loan
+// INVEST_LOANS-007;RCF Loan
+// INVEST_LOANS-008;Capitalisation contract{F}Contrat de capitalisation
+// GUART-001;Cash Guarantee on Securities Lending {F}Garantie Cash sur emprunt de titres
+// GUART-002;Cash Guarantee on Forward Market {F}Garantie Cash sur marché à terme ferme
+// GUART-003;Cash Guarantee on Conditionnal Future Market {F}Garantie Cash sur marché à terme conditionnel
+// GUART-004;Secured Guarantee{F}Garantie Titre
+// PINV-001;Building {F}Immeuble
+// PINV-002;Fees {F}Frais
+// PINV-003;Works {F}Travaux
+// PINV-004;General Installation {F}Installation générale
+// PINV-005;Furniture {F}Mobilier
+// PINV-006;Working Funds {F}Fonds de travaux
+// PINV-007;Security Deposit {F}Dépôt de Garantie
+// ANK01;Anschaffungsnebenkosten
+// ANK02;Anschaffungsnebenkosten GG
+// INVEST_LOANS-009;Fixed Interest Term Loan
+// INVEST_LOANS-010;Variable Interest Term Loan
+// INVEST_LOANS-011;Revolving Facility
+// INVEST_LOANS-012;PIK Loan
+// INVEST_LOANS-013;Loan Notes
+// INVEST_LOANS-014;CLO investments
+// INVEST_LOANS-015;Convertible Preferred Equity Certificates(CPECs)
+// BOND-009;Toggle PIK Notes
+// BOND-010;PIK Bonds
+// CEQTY-003;Common Stock
 
 
 
-
-
-
+// -------------------------------------------------------------
+// Coupon Type as called in FIA with the corresponding mapping  
+// -------------------------------------------------------------
+// FIC USERTEXT9                                                
+// VARIABLE                                                     
+// FIXED                                                        
+// REVISED                                                      
+                                                                
+// Equivalent FIA USERTEXT46 to be used for Loan
+// FIXED 01;01 - fixed       
+// 02;02 - progressive       
+// VARIABLE 03;03 - floating 
+// 04;04 - zero coupon       
+// 05;05 - index linked      
+// REVISED 99;99 - other     
+                                     
+// // -------------------------------
+// // Bond Nature mapping as per FIA 
+// // -------------------------------
+// SBOND-001;Zero coupon bond{F}Obligation à coupon zéro
+// SBOND-002;Floating rate bond{F}Obligation à taux variable
+// SBOND-003;Fixed rate bond{F}Obligation à taux fixe
+// SBOND-004;Revisable rate bond{F}Obligation à taux révisable

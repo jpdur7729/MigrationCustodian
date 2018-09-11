@@ -1,7 +1,15 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-08-17 11:30:58 jpdur"
+//                     Time-stamp: "2018-09-11 11:13:51 jpdur"
 // ------------------------------------------------------------------------------
+
+
+// -----------------------------------------------------------------------------
+// Adding on Sept 5th the fact that the status of the fund is "Underlying Fund" 
+// the corresponding code is 3                                                  
+// -----------------------------------------------------------------------------
+// Sept 11th -- All funds who do not have a GL. That is the new condition implied
+// -----------------------------------------------------------------------------
 
 LIBNAME USER ".";
 
@@ -26,23 +34,25 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "on fund.ftype = vcfundtype.code ";
 // Specifically the funds for which there is no GL associated
 %LET SQLQUERY = %SQLQUERY + "where fund.iqid not in (select fund from glentitychart where iqdeleted = 0 and fund is not null) ";
-// %LET SQLQUERY = %SQLQUERY + "and vcfundtype.filter <> '00000000000000000000000000000000' ";
+// %LET SQLQUERY = %SQLQUERY + "and fund.fstatus = '3' ";
 %LET SQLQUERY = %SQLQUERY + "and fund.iqdeleted=0 ";
 
 // Restrict the region as entered as parameter
 %LET SQLQUERY = %SQLQUERY + "and fund.iqregionid like '%" & %REGION_IQID & "%'";
 // Apply the region filter based on the characteristics of the end-user
 %LET SQLQUERY = %SQLQUERY + "   and EXISTS (SELECT 1 FROM ADMDYNROLE WHERE USERID='" & %USERID & "' AND READACCESS<>0 AND ROLEID = fund.iqregionid) ";
-                                                              
-                                                              
-// Extract the data using SQL                                 
-PROC SQLIMPORT DATA=WORK.T_FUNDS SQL=%SQLQUERY ;              
-RUN;                                                          
+
+// Debug the SQL Query
+PROC PRINT; PUT %SQLQUERY; RUN; 
+
+// Extract the data using SQL
+PROC SQLIMPORT DATA=WORK.T_FUNDS SQL=%SQLQUERY ;
+RUN;
 
 // Check If data has been produced
 PROC PRINT DATA= WORK.T_FUNDS MAXROWS=10;RUN;
 
-// Create Empty Structure 
+// Create Empty Structure
 DATA T_FUNDS;
 SET  WORK.T_FUNDS;
 STOP;

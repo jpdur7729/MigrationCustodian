@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-09-03 07:26:45 jpdur"
+//                     Time-stamp: "2018-09-10 14:10:14 jpdur"
 // ------------------------------------------------------------------------------
 
 LIBNAME USER ".";
@@ -117,7 +117,7 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "    on y.FundIssuer = FundIssuer.iqid ";
 %LET SQLQUERY = %SQLQUERY + "  left join sfaaccount CieIssuer ";
 %LET SQLQUERY = %SQLQUERY + "    on y.CieIssuer = CieIssuer.iqid ";
-%LET SQLQUERY = %SQLQUERY + " where InstrumentType in ('OS') ";
+%LET SQLQUERY = %SQLQUERY + " where InstrumentType in ('OS' , 'PS') ";
 %LET SQLQUERY = %SQLQUERY + "   and vcfund.iqid like '%" & %FUND_IQID & "%' ";
 
 // Apply the region filter

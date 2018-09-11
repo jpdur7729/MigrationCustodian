@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-08-29 10:19:12 jpdur"
+//                     Time-stamp: "2018-09-10 14:08:22 jpdur"
 // ------------------------------------------------------------------------------
 
 LIBNAME USER ".";
@@ -158,7 +158,7 @@ LIBNAME USER ".";
 %LET SQLQUERY = %SQLQUERY + "  left join sfaaccount CieIssuer ";
 %LET SQLQUERY = %SQLQUERY + "    on y.CieIssuer = CieIssuer.iqid ";
 // To guarantee that the instruments are Equities
-%LET SQLQUERY = %SQLQUERY + "   where InstrumentType in ('OS') ";
+%LET SQLQUERY = %SQLQUERY + "   where InstrumentType in ('OS' , 'PS') ";
 %LET SQLQUERY = %SQLQUERY + "   and vcfund.iqid like '%" & %FUND_IQID & "%' ";
 // In order to be sure that there is a Fund Issuer
 %LET SQLQUERY = %SQLQUERY + "   and vcfund.iqid is not null ";
