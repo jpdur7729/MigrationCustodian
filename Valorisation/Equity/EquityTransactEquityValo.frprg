@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-09-10 14:10:14 jpdur"
+//                     Time-stamp: "2018-09-12 15:03:02 jpdur"
 // ------------------------------------------------------------------------------
 
 LIBNAME USER ".";
@@ -28,7 +28,7 @@ LIBNAME USER ".";
 // Add Extra fields which are not included in the extract
 // %LET SQLQUERY = %SQLQUERY + "       null as AccountingDate, ";
 %LET SQLQUERY = %SQLQUERY + "       'No'  as Draft, ";
-%LET SQLQUERY = %SQLQUERY + "       'Yes' as Locked, ";
+%LET SQLQUERY = %SQLQUERY + "       'No'  as Locked, ";
 %LET SQLQUERY = %SQLQUERY + "       'No'  as Cancelled, ";
 %LET SQLQUERY = %SQLQUERY + "       'Yes' as ExcludeFromCash, ";
 %LET SQLQUERY = %SQLQUERY + "       'Yes' as GLManualEntries, ";
