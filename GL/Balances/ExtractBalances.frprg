@@ -1,13 +1,15 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-09-03 08:13:23 jpdur"
+//                     Time-stamp: "2018-09-13 15:41:56 jpdur"
 // ------------------------------------------------------------------------------
                                                   
 // Reusing the standard CalcEngine functionalities
 %INCLUDE "P_GL_CHART_FUND";
 %INCLUDE "P_GL_FISCDATE";
 %INCLUDE "\\(Shared)\Standard datamart\BUILD_DATA";
-                                 
+
+// Modification Sept 13th ... Account name to be extended with the currency only for class 5
+
 LIBNAME Std_Output WORK;
 
 // Reformat the data accordingly keep the columns to get the relevant data
@@ -29,7 +31,7 @@ DATA WORK.T_GL_CHART_OF_ACCOUNT(RENAME = (DEBIT2=DEBIT_CCY CREDIT2=CREDIT_CCY AC
 	 // 	  for class4/5 after the 1st hyphen we get the currency which is kept for these accounts
 	 // ----------------------------------------------------------------------------------------------
 	 IF LENGHT <> 0 then
-		IF ACCOUNT_CLASS_NUMBER <> '4' AND ACCOUNT_CLASS_NUMBER <> '5' THEN
+		IF ACCOUNT_CLASS_NUMBER <> '5' THEN
 		   ACCOUNT_NUMBER= LEFT (ACCOUNT,(FIND(ACCOUNT,'-')) - 1 );
 	    ELSE
 		   ACCOUNT_NUMBER= LEFT (ACCOUNT,(FIND(ACCOUNT,'-')) + 3);

@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-09-13 14:12:22 jpdur"
+//                     Time-stamp: "2018-09-13 15:18:50 jpdur"
 // ------------------------------------------------------------------------------
 
 LIBNAME ODIR "." ; 
@@ -209,26 +209,32 @@ DATA WORK.CALL_FUNDOP;
      GLMANUALENTRIES = "Yes" ;                                                        
                                                                                       
 	 // Description specific                                                          
-	 DESCRIPTION = INVESTOR_NAME & " Call " & FORMAT(REPORT_DATE,"dd/MM/yyyy");        
-	 OUTPUT;                                                                   
-RUN;                                                                           
-                                                                               
-// DISTRIBUTION: Add a set of standard fields for import                       
-// OPINDEX - DRAFT	- EXCLUDEFROMCASH - GLMANUALENTRIES                        
-DATA WORK.DISTRIBUTION_FUNDOP;                                                 
-	 SET WORK.DISTRIBUTION_FUNDOP;                                             
-     COLUMN OPINDEX				TYPE=INTEGER;                                  
-     COLUMN DRAFT				TYPE=STRING;                                   
-     COLUMN EXCLUDEFROMCASH  	TYPE=STRING;                                   
-     COLUMN GLMANUALENTRIES  	TYPE=STRING;                                   
-	 COLUMN	DESCRIPTION 		TYPE=STRING;                                   
-                                                                               
-	 OPINDEX		 = 3;                                                      
-	 DRAFT   		 = "No" ;                                                  
-     EXCLUDEFROMCASH = "Yes" ;                                                 
-     GLMANUALENTRIES = "Yes" ;                                                 
-                                                                               
-	 // Description specific                                                   
+	 DESCRIPTION = INVESTOR_NAME & " Call " & FORMAT(REPORT_DATE,"dd/MM/yyyy");
+                                                                        
+	 // Sum of Call Inside and Outside Commitment                                                 
+	 CAPITAL_CALL_INSIDE_COMM  = NZ(CAPITAL_CALL_INSIDE_COMM ,0.0) + NZ(CAPITAL_CALL_OUTSIDE_COMM ,0.0) ;
+	 CAPITAL_CALL_INSIDE_COMM1 = NZ(CAPITAL_CALL_INSIDE_COMM1,0.0) + NZ(CAPITAL_CALL_OUTSIDE_COMM1,0.0) ;
+	 CAPITAL_CALL_INSIDE_COMM2 = NZ(CAPITAL_CALL_INSIDE_COMM2,0.0) + NZ(CAPITAL_CALL_OUTSIDE_COMM2,0.0) ;
+	 OUTPUT;
+	 
+RUN;
+
+// DISTRIBUTION: Add a set of standard fields for import
+// OPINDEX - DRAFT	- EXCLUDEFROMCASH - GLMANUALENTRIES
+DATA WORK.DISTRIBUTION_FUNDOP;
+	 SET WORK.DISTRIBUTION_FUNDOP;
+     COLUMN OPINDEX				TYPE=INTEGER;
+     COLUMN DRAFT				TYPE=STRING;
+     COLUMN EXCLUDEFROMCASH  	TYPE=STRING;
+     COLUMN GLMANUALENTRIES  	TYPE=STRING;
+	 COLUMN	DESCRIPTION 		TYPE=STRING;
+
+	 OPINDEX		 = 3;
+	 DRAFT   		 = "No" ;
+     EXCLUDEFROMCASH = "Yes" ;
+     GLMANUALENTRIES = "Yes" ;
+
+	 // Description specific
 	 DESCRIPTION = INVESTOR_NAME & " Distribution " & FORMAT(REPORT_DATE,"dd/MM/yyyy");
 	 OUTPUT;
 RUN;
