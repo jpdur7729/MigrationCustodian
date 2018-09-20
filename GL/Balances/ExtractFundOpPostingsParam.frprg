@@ -1,0 +1,13 @@
+// ------------------------------------------------------------------------------
+//                     Author    : eFront-BP2S
+//                     Time-stamp: "2018-09-20 17:56:44 jpdur"
+// ------------------------------------------------------------------------------
+              
+// // Default fund is Fund 1164
+%PARAM IQID_FUND	LABEL="Fund{F}Fonds" TYPE=STRING INFORMAT="??PICKID(VCFUND;FUND)" DEFAULT="91C4CBF79A324942AA5C4C859F53BE1C";
+%PARAM IQID_CHART 	LABEL = "Select General Ledger"
+	   INFORMAT= "??PICKID(SELECT A.IQID, A.NAME FROM GLCHART A, GLENTITYCHART B WHERE ??FILTER AND (A.IQID = B.CHART) AND (A.IQDELETED=0) AND (B.IQDELETED=0) AND (B.FUND IN (?));{IQID_FUND})" NOTNULL;
+%PARAM DATE LABEL="Reference date" TYPE=DATE DEFAULT = "31/12/2017" NOTNULL; 
+
+// Call The Program which actually extracts the FundOp Postings
+%INCLUDE "FundOpPostings";

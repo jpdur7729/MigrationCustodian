@@ -1,17 +1,17 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-09-13 15:41:56 jpdur"
+//                     Time-stamp: "2018-09-20 16:39:48 jpdur"
 // ------------------------------------------------------------------------------
-                                                  
+
 // Reusing the standard CalcEngine functionalities
 %INCLUDE "P_GL_CHART_FUND";
 %INCLUDE "P_GL_FISCDATE";
 %INCLUDE "\\(Shared)\Standard datamart\BUILD_DATA";
-
+          
 // Modification Sept 13th ... Account name to be extended with the currency only for class 5
-
+          
 LIBNAME Std_Output WORK;
-
+          
 // Reformat the data accordingly keep the columns to get the relevant data
 DATA WORK.T_GL_CHART_OF_ACCOUNT(RENAME = (DEBIT2=DEBIT_CCY CREDIT2=CREDIT_CCY ACCOUNT_CURRENCY=TRANSAC_CURRENCY ));
 	 SET Std_Output.FV_T_GL_CHART_OF_ACCOUNT (KEEP = ACCOUNT_IQID ACCOUNT_CLASS_NUMBER ACCOUNT ACCOUNT_CURRENCY DEBIT CREDIT DEBIT2 CREDIT2);
@@ -35,36 +35,42 @@ DATA WORK.T_GL_CHART_OF_ACCOUNT(RENAME = (DEBIT2=DEBIT_CCY CREDIT2=CREDIT_CCY AC
 		   ACCOUNT_NUMBER= LEFT (ACCOUNT,(FIND(ACCOUNT,'-')) - 1 );
 	    ELSE
 		   ACCOUNT_NUMBER= LEFT (ACCOUNT,(FIND(ACCOUNT,'-')) + 3);
-		END;
-	END;
-
-	OUTPUT;
-RUN;
-
-// Print the result of the data       
-PROC PRINT DATA = WORK.T_GL_CHART_OF_ACCOUNT; RUN;
-
+		END;                                                      
+	END;                                                          
+                                                                  
+	OUTPUT;                                                       
+RUN;                                                              
+                                                                  
+// Print the result of the data                                   
+PROC PRINT DATA = WORK.T_GL_CHART_OF_ACCOUNT; RUN;                
+                                                                  
 // -------------------------------------------------------------------------------------------------
 // As a result of the simplification of the account number we now have a situation by which
 // different accounts have now been merge into one ==> We thus need to sum the balances accordingly
 // -------------------------------------------------------------------------------------------------
 DATA WORK.T_GL_OPENING_BALANCES (DROP = ACCOUNT_IQID LENGTH ACCOUNT ACCOUNT_CLASS_NUMBER) ;
-	 SET WORK.T_GL_CHART_OF_ACCOUNT;
-RUN;
-                                
-// Just suming the data together
+	 SET WORK.T_GL_CHART_OF_ACCOUNT;                              
+RUN;                                                              
+                                                                  
+// Just suming the data together                                  
 PROC MEANS DATA=WORK.T_GL_OPENING_BALANCES OUT=WORK.T_OPENING_BALANCES;
-	 CLASS ACCOUNT_NUMBER TRANSAC_CURRENCY;
-	 SUM DEBIT  	(NAME=DEBIT		  LABEL="DEBIT" );                
-	 SUM CREDIT 	(NAME=CREDIT  	  LABEL="CREDIT");                
-	 SUM DEBIT_CCY  (NAME=DEBIT_CCY   LABEL="DEBIT_CCY" );            
-	 SUM CREDIT_CCY (NAME=CREDIT_CCY  LABEL="CREDIT_CCY");            
-RUN;
-
+	 CLASS ACCOUNT_NUMBER TRANSAC_CURRENCY;                       
+	 SUM DEBIT  	(NAME=DEBIT		  LABEL="DEBIT" );            
+	 SUM CREDIT 	(NAME=CREDIT  	  LABEL="CREDIT");            
+	 SUM DEBIT_CCY  (NAME=DEBIT_CCY   LABEL="DEBIT_CCY" );        
+	 SUM CREDIT_CCY (NAME=CREDIT_CCY  LABEL="CREDIT_CCY");        
+RUN;                                                              
+                                                                  
 // For the sake of presentation sorting the table by account number
 PROC SORT DATA=WORK.T_OPENING_BALANCES OUT=WORK.T_OPENING_BALANCES;
-	 BY ACCOUNT_NUMBER;
-RUN;
-    
-// Print the result of the data
-PROC PRINT DATA = WORK.T_OPENING_BALANCES; RUN;
+	 BY ACCOUNT_NUMBER;                                           
+RUN;                                                              
+                                                                  
+// Print the result of the data                                   
+PROC PRINT DATA = WORK.T_OPENING_BALANCES; RUN;                   
+                                                                  
+// ------------------------------------------------------------------------------
+// IQID_CHART is the parameter storing the IQID of the GLCHART that is being use 
+// We now have also the FUND_OP_POSTINGS ready to be processed                   
+// ------------------------------------------------------------------------------
+// %INCLUDE "FundOpPostings"; 
