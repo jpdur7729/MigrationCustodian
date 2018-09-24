@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-09-21 17:51:10 jpdur"
+//                     Time-stamp: "2018-09-24 15:45:18 jpdur"
 // ------------------------------------------------------------------------------
               
 // // // Default fund is Fund 1164
@@ -57,12 +57,12 @@ LIBNAME ODIR "." ;
 PROC PRINT; PUT %SQLQUERY; RUN;
 
 // Extract into a Table
-PROC SQLIMPORT DATA=WORK.FUNDOP_POSTINGS SQL=%SQLQUERY;
+PROC SQLIMPORT DATA=WORK.FUNDOP_POSTINGS_DETAILS SQL=%SQLQUERY;
 RUN;
 
 // Normalise the account number according to the new FIA approach
-DATA WORK.FUNDOP_POSTINGS;
-	 SET WORK.FUNDOP_POSTINGS (RENAME=(ACCOUNTNUMBER=ACCOUNT));
+DATA WORK.FUNDOP_POSTINGS_DETAILS;
+	 SET WORK.FUNDOP_POSTINGS_DETAILS (RENAME=(ACCOUNTNUMBER=ACCOUNT));
 
 	 // 3 Extra columns
 	 COLUMN ACCOUNT_CLASS_NUMBER TYPE = STRING;
@@ -95,10 +95,36 @@ RUN;
 
 
 // Check the data obtained
+PROC PRINT DATA=WORK.FUNDOP_POSTINGS_DETAILS MAXROWS=10; RUN;
+
+// ----------------------------------------------------------------
+// Consolidate the data per Investor Account/Share Class/Fund.
+// As a result the date should be replaced by 31/12/2017
+// ----------------------------------------------------------------
+PROC MEANS DATA=WORK.FUNDOP_POSTINGS_DETAILS OUT=WORK.FUNDOP_POSTINGS ;
+     CLASS ACCOUNT ACCOUNTNAME FUND SHARECLASS INVESTORACCOUNT GLCHART DRAFT FUNDIQID IAIQID FUNDOPIQID SHARECLASSIQID TRANSACTIONCURRENCY ACCOUNT_CLASS_NUMBER ACCOUNT_NUMBER LENGHT;
+	 SUM AMOUNT  (LABEL="Amount"  NAME=AMOUNT) ;
+	 SUM AMOUNT2 (LABEL="Amount2" NAME=AMOUNT2);
+RUN;
+
+// ------------------------------------------------------------------------------
+// We add the date as the report date in the consolidation of all these postings
+// ------------------------------------------------------------------------------
+DATA WORK.FUNDOP_POSTINGS;
+	SET WORK.FUNDOP_POSTINGS;
+
+	COLUMN GLDATE TYPE=DATE;
+
+	GLDATE = %DATE;
+RUN;
+
+// Check the data obtained for the consolidation
 PROC PRINT DATA=WORK.FUNDOP_POSTINGS MAXROWS=10; RUN;
-                                    
-// Create the empty structure       
+
+// Create the empty structure
 DATA ODIR.FUNDOP_POSTINGS;
 	 SET WORK.FUNDOP_POSTINGS;
 	 STOP;
-RUN; 
+RUN;
+
+
