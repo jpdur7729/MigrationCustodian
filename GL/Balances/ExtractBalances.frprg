@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-09-20 16:39:48 jpdur"
+//                     Time-stamp: "2018-09-21 08:47:08 jpdur"
 // ------------------------------------------------------------------------------
 
 // Reusing the standard CalcEngine functionalities
@@ -11,7 +11,8 @@
 // Modification Sept 13th ... Account name to be extended with the currency only for class 5
           
 LIBNAME Std_Output WORK;
-          
+LIBNAME ODIR 	   "." ; 
+
 // Reformat the data accordingly keep the columns to get the relevant data
 DATA WORK.T_GL_CHART_OF_ACCOUNT(RENAME = (DEBIT2=DEBIT_CCY CREDIT2=CREDIT_CCY ACCOUNT_CURRENCY=TRANSAC_CURRENCY ));
 	 SET Std_Output.FV_T_GL_CHART_OF_ACCOUNT (KEEP = ACCOUNT_IQID ACCOUNT_CLASS_NUMBER ACCOUNT ACCOUNT_CURRENCY DEBIT CREDIT DEBIT2 CREDIT2);
@@ -35,42 +36,124 @@ DATA WORK.T_GL_CHART_OF_ACCOUNT(RENAME = (DEBIT2=DEBIT_CCY CREDIT2=CREDIT_CCY AC
 		   ACCOUNT_NUMBER= LEFT (ACCOUNT,(FIND(ACCOUNT,'-')) - 1 );
 	    ELSE
 		   ACCOUNT_NUMBER= LEFT (ACCOUNT,(FIND(ACCOUNT,'-')) + 3);
-		END;                                                      
-	END;                                                          
-                                                                  
-	OUTPUT;                                                       
-RUN;                                                              
-                                                                  
-// Print the result of the data                                   
-PROC PRINT DATA = WORK.T_GL_CHART_OF_ACCOUNT; RUN;                
-                                                                  
+		END;
+	END;
+
+	OUTPUT;
+RUN;
+
+// Print the result of the data
+PROC PRINT DATA = WORK.T_GL_CHART_OF_ACCOUNT; RUN;
+
 // -------------------------------------------------------------------------------------------------
 // As a result of the simplification of the account number we now have a situation by which
 // different accounts have now been merge into one ==> We thus need to sum the balances accordingly
 // -------------------------------------------------------------------------------------------------
 DATA WORK.T_GL_OPENING_BALANCES (DROP = ACCOUNT_IQID LENGTH ACCOUNT ACCOUNT_CLASS_NUMBER) ;
-	 SET WORK.T_GL_CHART_OF_ACCOUNT;                              
-RUN;                                                              
-                                                                  
-// Just suming the data together                                  
+	 SET WORK.T_GL_CHART_OF_ACCOUNT;
+RUN;
+
+// Just suming the data together
 PROC MEANS DATA=WORK.T_GL_OPENING_BALANCES OUT=WORK.T_OPENING_BALANCES;
-	 CLASS ACCOUNT_NUMBER TRANSAC_CURRENCY;                       
-	 SUM DEBIT  	(NAME=DEBIT		  LABEL="DEBIT" );            
-	 SUM CREDIT 	(NAME=CREDIT  	  LABEL="CREDIT");            
-	 SUM DEBIT_CCY  (NAME=DEBIT_CCY   LABEL="DEBIT_CCY" );        
-	 SUM CREDIT_CCY (NAME=CREDIT_CCY  LABEL="CREDIT_CCY");        
-RUN;                                                              
-                                                                  
+	 CLASS ACCOUNT_NUMBER TRANSAC_CURRENCY;
+	 SUM DEBIT  	(NAME=DEBIT		  LABEL="DEBIT" );
+	 SUM CREDIT 	(NAME=CREDIT  	  LABEL="CREDIT");
+	 SUM DEBIT_CCY  (NAME=DEBIT_CCY   LABEL="DEBIT_CCY" );
+	 SUM CREDIT_CCY (NAME=CREDIT_CCY  LABEL="CREDIT_CCY");
+RUN;
+
 // For the sake of presentation sorting the table by account number
 PROC SORT DATA=WORK.T_OPENING_BALANCES OUT=WORK.T_OPENING_BALANCES;
-	 BY ACCOUNT_NUMBER;                                           
-RUN;                                                              
-                                                                  
-// Print the result of the data                                   
-PROC PRINT DATA = WORK.T_OPENING_BALANCES; RUN;                   
-                                                                  
+	 BY ACCOUNT_NUMBER;
+RUN;                
+                    
+// Print the result of the data
+PROC PRINT DATA = WORK.T_OPENING_BALANCES; RUN;
+
+// Create the empty data structure of the table
+DATA ODIR.T_OPENING_BALANCES;
+	 SET WORK.T_OPENING_BALANCES;
+	 STOP;
+RUN;
+
+// Store all the opening balance on disk
+DATA ODIR.ALL_OPENING_BALANCES;
+	 SET WORK.T_OPENING_BALANCES;
+RUN;
+
+/*
 // ------------------------------------------------------------------------------
-// IQID_CHART is the parameter storing the IQID of the GLCHART that is being use 
-// We now have also the FUND_OP_POSTINGS ready to be processed                   
+// Step - 2: Extracting the Fund Ops Postings to get the information of the IA
 // ------------------------------------------------------------------------------
-// %INCLUDE "FundOpPostings"; 
+// IQID_CHART is the parameter storing the IQID of the GLCHART that is being used
+// IQID_FUND  is the parameter storing the IQID of the FUND    that is being used
+// DATE       is the parameter storing the Date to be used to filter the postings
+// We now have also the FUND_OP_POSTINGS ready to be processed
+// ------------------------------------------------------------------------------
+// %INCLUDE "FundOpPostings";
+
+
+// -----------------------------------------------------------------------------------
+// Step - 3: Filtering from the balances the proper balances from the FundOpPostings
+// -----------------------------------------------------------------------------------
+
+// Extract some data to get the Fund Name, the Chart Name
+%LET SQLEXTRACT = %SQLEXTRACT + "select glchart.name as GLCHART, fund.fund as FUND ";
+%LET SQLEXTRACT = %SQLEXTRACT + "from GLCHART glchart,VCFUND fund, GLENTITYCHART  ";
+%LET SQLEXTRACT = %SQLEXTRACT + "where glchart.iqid like '%" & %IQID_CHART & "%' ";
+%LET SQLEXTRACT = %SQLEXTRACT + " and glentitychart.chart = glchart.iqid ";
+%LET SQLEXTRACT = %SQLEXTRACT + " and glentitychart.fund  = fund.iqid ";
+
+// Create the temporary table
+PROC SQLIMPORT DATA=WORK.COMPLEMENTARY_COLUMNS SQL=%SQLEXTRACT;
+RUN;
+
+// Add a few extra fields such as the reference date
+DATA WORK.COMPLEMENTARY_COLUMNS;
+	 SET WORK.COMPLEMENTARY_COLUMNS;
+
+	 COLUMN GLDATE TYPE=DATE;
+	 GLDATE = %DATE;
+
+     OUTPUT;
+RUN;
+
+// Reformat the Opening Balance in order to have a set of data Ready to import
+DATA WORK.OPENING_BALANCES
+	 MERGE WORK.T_OPENING_BALANCES WORK.COMPLEMENTARY_COLUMNS;
+RUN;
+
+// Now Reformat the
+*/
+
+/* FUNDOP_POSTINGS
+COLUMN "ACCOUNT" LABEL="ACCOUNT" TYPE="STRING";
+COLUMN "ACCOUNTNAME" LABEL="ACCOUNTNAME" TYPE="STRING";
+COLUMN "FUND" LABEL="FUND" TYPE="STRING";
+COLUMN "SHARECLASS" LABEL="SHARECLASS" TYPE="STRING";
+COLUMN "INVESTORACCOUNT" LABEL="INVESTORACCOUNT" TYPE="STRING";
+COLUMN "GLCHART" LABEL="GLCHART" TYPE="STRING";
+COLUMN "GLDATE" LABEL="GLDATE" TYPE="DATE";
+COLUMN "DRAFT" LABEL="DRAFT" TYPE="FLOAT";
+COLUMN "AMOUNT" LABEL="AMOUNT" TYPE="FLOAT";
+COLUMN "AMOUNT2" LABEL="AMOUNT2" TYPE="FLOAT";
+COLUMN "CURRENCY2" LABEL="CURRENCY2" TYPE="STRING";
+COLUMN "FUNDIQID" LABEL="FUNDIQID" TYPE="STRING";
+COLUMN "IAIQID" LABEL="IAIQID" TYPE="STRING";
+COLUMN "FUNDOPIQID" LABEL="FUNDOPIQID" TYPE="STRING";
+COLUMN "SHARECLASSIQID" LABEL="SHARECLASSIQID" TYPE="STRING";
+COLUMN "TRANSACTIONCURRENCY" LABEL="TRANSACTIONCURRENCY" TYPE="STRING";
+COLUMN "ACCOUNT_CLASS_NUMBER" LABEL="ACCOUNT_CLASS_NUMBER" TYPE="STRING";
+COLUMN "ACCOUNT_NUMBER" LABEL="ACCOUNT_NUMBER" TYPE="STRING";
+COLUMN "LENGHT" LABEL="LENGHT" TYPE="FLOAT";
+*/
+
+/* Opening Balances
+COLUMN "ACCOUNT_NUMBER" LABEL="ACCOUNT_NUMBER" TYPE="STRING";
+COLUMN "TRANSAC_CURRENCY" LABEL="Account currency{F}Devise du compte" TYPE="STRING";
+COLUMN "DEBIT" LABEL="DEBIT" TYPE="FLOAT" FORMAT="#,###,##0.00";
+COLUMN "CREDIT" LABEL="CREDIT" TYPE="FLOAT" FORMAT="#,###,##0.00";
+COLUMN "DEBIT_CCY" LABEL="DEBIT_CCY" TYPE="FLOAT" FORMAT="#,###,##0.00";
+COLUMN "CREDIT_CCY" LABEL="CREDIT_CCY" TYPE="FLOAT" FORMAT="#,###,##0.00";
+*/
+

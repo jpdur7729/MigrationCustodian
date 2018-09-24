@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-09-20 16:40:32 jpdur"
+//                     Time-stamp: "2018-09-24 10:15:26 jpdur"
 // ------------------------------------------------------------------------------
 
 LIBNAME ODIR "." ; 
@@ -52,7 +52,7 @@ LIBNAME ODIR "." ;
 
 %LET USECALCENGINE =TRUE;
 %DEFINE DATAMART_COMPATIBILITY;
-
+                 
 // Final Investors
 DATA WORK.table_investors_final;
 	 COLUMN INVESTOR_ID TYPE=STRING;
@@ -183,41 +183,104 @@ DATA WORK.COMMITMENT_FUNDOP;
      COLUMN GLMANUALENTRIES  	TYPE=STRING;
 	 COLUMN	DESCRIPTION 		TYPE=STRING;
 
-	 OPINDEX		 = 1;
+     // Exchange Rate for Commitment
+	 COLUMN EXCH_COMMITMENT 	TYPE=FLOAT;
+                                    
+	 OPINDEX		 = 1;           
+	 DRAFT   		 = "No" ;       
+     EXCLUDEFROMCASH = "Yes" ;      
+     GLMANUALENTRIES = "Yes" ;      
+                                    
+	 IF NZ(COMMITMENT,0) = 0 THEN
+	 	EXCH_COMMITMENT = 1 ;
+	 ELSE
+	 	EXCH_COMMITMENT = COMMITMENT2/COMMITMENT ;
+     END;
+
+	 // Description specific
+	 DESCRIPTION = INVESTOR_NAME & " Commitment " & FORMAT(REPORT_DATE,"dd/MM/yyyy") ;
+	 OUTPUT;
+RUN;
+
+
+// CALL: Add a set of standard fields for import
+// OPINDEX - DRAFT	- EXCLUDEFROMCASH - GLMANUALENTRIES
+DATA WORK.CALL_FUNDOP;
+	 SET WORK.CALL_FUNDOP;
+     COLUMN OPINDEX				TYPE=INTEGER;
+     COLUMN DRAFT				TYPE=STRING;
+     COLUMN EXCLUDEFROMCASH  	TYPE=STRING;
+     COLUMN GLMANUALENTRIES  	TYPE=STRING;
+	 COLUMN	DESCRIPTION 		TYPE=STRING;
+
+	 OPINDEX		 = 2;
 	 DRAFT   		 = "No" ;
      EXCLUDEFROMCASH = "Yes" ;
      GLMANUALENTRIES = "Yes" ;
 
 	 // Description specific
-	 DESCRIPTION = INVESTOR_NAME & " Commitment " & FORMAT(REPORT_DATE,"dd/MM/yyyy") ;
-	 OUTPUT;                                                                          
-RUN;                                                                                  
-                                                                                      
-                                                                                      
-// CALL: Add a set of standard fields for import                                      
-// OPINDEX - DRAFT	- EXCLUDEFROMCASH - GLMANUALENTRIES                               
-DATA WORK.CALL_FUNDOP;                                                                
-	 SET WORK.CALL_FUNDOP;                                                            
-     COLUMN OPINDEX				TYPE=INTEGER;                                         
-     COLUMN DRAFT				TYPE=STRING;                                          
-     COLUMN EXCLUDEFROMCASH  	TYPE=STRING;                                          
-     COLUMN GLMANUALENTRIES  	TYPE=STRING;                                          
-	 COLUMN	DESCRIPTION 		TYPE=STRING;                                          
-                                                                                      
-	 OPINDEX		 = 2;                                                             
-	 DRAFT   		 = "No" ;                                                         
-     EXCLUDEFROMCASH = "Yes" ;                                                        
-     GLMANUALENTRIES = "Yes" ;                                                        
-                                                                                      
-	 // Description specific                                                          
 	 DESCRIPTION = INVESTOR_NAME & " Call " & FORMAT(REPORT_DATE,"dd/MM/yyyy");
-                                                                        
-	 // Sum of Call Inside and Outside Commitment                                                 
+
+	 // Sum of Call Inside and Outside Commitment
 	 CAPITAL_CALL_INSIDE_COMM  = NZ(CAPITAL_CALL_INSIDE_COMM ,0.0) + NZ(CAPITAL_CALL_OUTSIDE_COMM ,0.0) ;
 	 CAPITAL_CALL_INSIDE_COMM1 = NZ(CAPITAL_CALL_INSIDE_COMM1,0.0) + NZ(CAPITAL_CALL_OUTSIDE_COMM1,0.0) ;
 	 CAPITAL_CALL_INSIDE_COMM2 = NZ(CAPITAL_CALL_INSIDE_COMM2,0.0) + NZ(CAPITAL_CALL_OUTSIDE_COMM2,0.0) ;
+
+	 // Calculate the specific Exchange Rates
+	 COLUMN EXCH_CAPITAL_CALL_INSIDE_COMM 	   TYPE = FLOAT;
+
+	 IF NZ(CAPITAL_CALL_INSIDE_COMM,0) = 0 THEN
+	 	EXCH_CAPITAL_CALL_INSIDE_COMM = 1 ;
+	 ELSE
+	 	EXCH_CAPITAL_CALL_INSIDE_COMM = CAPITAL_CALL_INSIDE_COMM2/CAPITAL_CALL_INSIDE_COMM ;
+     END;
+
+   	 // Calculate the specific Exchange Rates
+	 COLUMN EXCH_CAPITAL_CALL_OUTSIDE_COMM 	   TYPE = FLOAT;
+
+	 IF NZ(CAPITAL_CALL_OUTSIDE_COMM,0) = 0 THEN
+	 	EXCH_CAPITAL_CALL_OUTSIDE_COMM = 1 ;
+	 ELSE
+	 	EXCH_CAPITAL_CALL_OUTSIDE_COMM = CAPITAL_CALL_OUTSIDE_COMM2/CAPITAL_CALL_OUTSIDE_COMM ;
+     END;
+
+	 // Calculate the specific Exchange Rates
+	 COLUMN EXCH_MANAGEMENT_FEES 	   TYPE = FLOAT;
+
+	 IF NZ(MANAGEMENT_FEES,0) = 0 THEN
+	 	EXCH_MANAGEMENT_FEES = 1 ;
+	 ELSE
+	 	EXCH_MANAGEMENT_FEES = MANAGEMENT_FEES2/MANAGEMENT_FEES ;
+     END;                                                      
+                                                               
+	 // Calculate the specific Exchange Rates                  
+	 COLUMN EXCH_MANAGEMENT_FEES_OUTSIDE_COMM 	   TYPE = FLOAT;
+                                                               
+	 IF NZ(MANAGEMENT_FEES_OUTSIDE_COMM,0) = 0 THEN            
+	 	EXCH_MANAGEMENT_FEES_OUTSIDE_COMM = 1 ;                
+	 ELSE                                                      
+	 	EXCH_MANAGEMENT_FEES_OUTSIDE_COMM = MANAGEMENT_FEES_OUTSIDE_COMM2/MANAGEMENT_FEES_OUTSIDE_COMM ;
+     END;                                
+                                         
+	 // Calculate the specific Exchange Rates
+	 COLUMN EXCH_OTHER_FEES 	   TYPE = FLOAT;
+                                         
+	 IF NZ(OTHER_FEES,0) = 0 THEN        
+	 	EXCH_OTHER_FEES = 1 ;            
+	 ELSE                                
+	 	EXCH_OTHER_FEES = OTHER_FEES2/OTHER_FEES ;
+     END;
+
+	 // Calculate the specific Exchange Rates
+	 COLUMN EXCH_OTHER_FEES_OUTSIDE_COMM 	   TYPE = FLOAT;
+
+	 IF NZ(OTHER_FEES_OUTSIDE_COMM,0) = 0 THEN
+	 	EXCH_OTHER_FEES_OUTSIDE_COMM = 1 ;
+	 ELSE
+	 	EXCH_OTHER_FEES_OUTSIDE_COMM = OTHER_FEES_OUTSIDE_COMM2/OTHER_FEES_OUTSIDE_COMM ;
+     END;
+
 	 OUTPUT;
-	 
 RUN;
 
 // DISTRIBUTION: Add a set of standard fields for import
@@ -230,23 +293,68 @@ DATA WORK.DISTRIBUTION_FUNDOP;
      COLUMN GLMANUALENTRIES  	TYPE=STRING;
 	 COLUMN	DESCRIPTION 		TYPE=STRING;
 
-	 // Calculate the specific Exchange Rates
-	 COLUMN EXCH_RETURNCAPITAL 	   TYPE = FLOAT;
-            
+	 // Description specific
+	 DESCRIPTION = INVESTOR_NAME & " Distribution " & FORMAT(REPORT_DATE,"dd/MM/yyyy");
+
 	 OPINDEX		 = 3;
 	 DRAFT   		 = "No" ;
      EXCLUDEFROMCASH = "Yes" ;
      GLMANUALENTRIES = "Yes" ;
 
-	 // Calculate FX Rate for Return of Capital amounts
-	 IF NZ(RETURN_OF_CAPITAL,0) = 0 THEN               
+	 // Calculate the specific Exchange Rates
+	 COLUMN EXCH_RETURNCAPITAL 	   TYPE = FLOAT;
+
+	 IF NZ(RETURN_OF_CAPITAL,0) = 0 THEN
 	 	EXCH_RETURNCAPITAL = 1 ;
 	 ELSE
 	 	EXCH_RETURNCAPITAL = RETURN_OF_CAPITAL2/RETURN_OF_CAPITAL ;
      END;
 
-	 // Description specific
-	 DESCRIPTION = INVESTOR_NAME & " Distribution " & FORMAT(REPORT_DATE,"dd/MM/yyyy");
+	 // Calculate the specific Exchange Rates
+	 COLUMN EXCH_REDRAWABLE_CAPITAL 	   TYPE = FLOAT;
+
+	 IF NZ(REDRAWABLE_CAPITAL,0) = 0 THEN
+	 	EXCH_REDRAWABLE_CAPITAL = 1 ;
+	 ELSE
+	 	EXCH_REDRAWABLE_CAPITAL = REDRAWABLE_CAPITAL2/REDRAWABLE_CAPITAL ;
+     END;
+
+	 // Calculate the specific Exchange Rates
+	 COLUMN EXCH_DIVIDENDS 	   TYPE = FLOAT;
+
+	 IF NZ(DIVIDENDS,0) = 0 THEN
+	 	EXCH_DIVIDENDS = 1 ;
+	 ELSE
+	 	EXCH_DIVIDENDS = DIVIDENDS2/DIVIDENDS ;
+     END;
+
+	 // Calculate the specific Exchange Rates
+	 COLUMN EXCH_GAIN_LOSS 	   TYPE = FLOAT;
+
+	 IF NZ(GAIN_LOSS,0) = 0 THEN
+	 	EXCH_GAIN_LOSS = 1 ;
+	 ELSE
+	 	EXCH_GAIN_LOSS = GAIN_LOSS2/GAIN_LOSS ;
+     END;
+
+	 // Calculate the specific Exchange Rates
+	 COLUMN EXCH_OTHER_INCOME 	   TYPE = FLOAT;
+
+	 IF NZ(OTHER_INCOME,0) = 0 THEN
+	 	EXCH_OTHER_INCOME = 1 ;
+	 ELSE
+	 	EXCH_OTHER_INCOME = OTHER_INCOME2/OTHER_INCOME ;
+     END;
+     
+	 // Calculate the specific Exchange Rates
+	 COLUMN EXCH_INTERESTS 	   TYPE = FLOAT;
+
+	 IF NZ(INTERESTS,0) = 0 THEN
+	 	EXCH_INTERESTS = 1 ;
+	 ELSE
+	 	EXCH_INTERESTS = INTERESTS2/INTERESTS ;
+     END;
+
 	 OUTPUT;
 RUN;
 
@@ -265,3 +373,37 @@ PROC PRINT DATA=WORK.DISTRIBUTION_FUNDOP    ; RUN;
 DATA ODIR.COMMITMENT_FUNDOP		; SET WORK.COMMITMENT_FUNDOP		; STOP ; RUN;
 DATA ODIR.CALL_FUNDOP 	  		; SET WORK.CALL_FUNDOP 	   			; STOP ; RUN;
 DATA ODIR.DISTRIBUTION_FUNDOP 	; SET WORK.DISTRIBUTION_FUNDOP   	; STOP ; RUN;
+
+
+// ------------------------------------------------------------------------
+// Distribution Filter for different groups ==> Create the Empty Structure
+// ------------------------------------------------------------------------
+DATA ODIR.DISTRIBUTION_FUNDOP_REDRAW 	; SET WORK.DISTRIBUTION_FUNDOP   	; STOP ; RUN;
+DATA ODIR.DISTRIBUTION_FUNDOP_OTHER 	; SET WORK.DISTRIBUTION_FUNDOP   	; STOP ; RUN;
+DATA ODIR.DISTRIBUTION_FUNDOP_GAIN		; SET WORK.DISTRIBUTION_FUNDOP   	; STOP ; RUN;
+DATA ODIR.DISTRIBUTION_FUNDOP_INTERESTS ; SET WORK.DISTRIBUTION_FUNDOP   	; STOP ; RUN;
+DATA ODIR.DISTRIBUTION_FUNDOP_DIVIDENDS ; SET WORK.DISTRIBUTION_FUNDOP   	; STOP ; RUN;
+                                    
+// Create the Filtered table to be used to generate the exact elements
+DATA WORK.DISTRIBUTION_FUNDOP_REDRAW 	; SET WORK.DISTRIBUTION_FUNDOP (WHERE NZ(REDRAWABLE_CAPITAL,0.0) <> 0.0)   	;  RUN;
+DATA WORK.DISTRIBUTION_FUNDOP_OTHER 	; SET WORK.DISTRIBUTION_FUNDOP (WHERE NZ(OTHER_INCOME      ,0.0) <> 0.0)  	;  RUN;
+DATA WORK.DISTRIBUTION_FUNDOP_GAIN		; SET WORK.DISTRIBUTION_FUNDOP (WHERE NZ(GAIN_LOSS         ,0.0) <> 0.0)  	;  RUN;
+DATA WORK.DISTRIBUTION_FUNDOP_INTERESTS ; SET WORK.DISTRIBUTION_FUNDOP (WHERE NZ(INTERESTS         ,0.0) <> 0.0)  	;  RUN;
+DATA WORK.DISTRIBUTION_FUNDOP_DIVIDENDS ; SET WORK.DISTRIBUTION_FUNDOP (WHERE NZ(DIVIDENDS         ,0.0) <> 0.0)  	;  RUN;
+
+
+// ------------------------------------------------------------------------
+// Call Filter for different groups ==> Create the Empty Structure
+// ------------------------------------------------------------------------
+DATA ODIR.CALL_FUNDOP_MNGTFEES		; SET WORK.CALL_FUNDOP   	; STOP ; RUN;
+DATA ODIR.CALL_FUNDOP_OTHER 	   	; SET WORK.CALL_FUNDOP   	; STOP ; RUN;
+DATA ODIR.CALL_FUNDOP_FEES_OUTSIDE 	; SET WORK.CALL_FUNDOP   	; STOP ; RUN;
+DATA ODIR.CALL_FUNDOP_OTHER_OUTSIDE ; SET WORK.CALL_FUNDOP   	; STOP ; RUN;
+
+
+// Create the Filtered table to be used to generate the exact elements
+DATA WORK.CALL_FUNDOP_MNGTFEES	   	; SET WORK.CALL_FUNDOP (WHERE NZ(MANAGEMENT_FEES				,0.0) <> 0.0)   ;  RUN;
+DATA WORK.CALL_FUNDOP_OTHER 	  	; SET WORK.CALL_FUNDOP (WHERE NZ(OTHER_FEES				       	,0.0) <> 0.0)  	;  RUN;
+DATA WORK.CALL_FUNDOP_FEES_OUTSIDE	; SET WORK.CALL_FUNDOP (WHERE NZ(MANAGEMENT_FEES_OUTSIDE_COMM  	,0.0) <> 0.0)  	;  RUN;
+DATA WORK.CALL_FUNDOP_OTHER_OUTSIDE	; SET WORK.CALL_FUNDOP (WHERE NZ(OTHER_FEES_OUTSIDE_COMM       	,0.0) <> 0.0)  	;  RUN;
+

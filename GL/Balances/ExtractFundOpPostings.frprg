@@ -1,15 +1,15 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-09-20 17:56:55 jpdur"
+//                     Time-stamp: "2018-09-21 17:51:10 jpdur"
 // ------------------------------------------------------------------------------
               
 // // // Default fund is Fund 1164
 // %PARAM IQID_FUND	LABEL="Fund{F}Fonds" TYPE=STRING INFORMAT="??PICKID(VCFUND;FUND)" DEFAULT="91C4CBF79A324942AA5C4C859F53BE1C";
 // %PARAM IQID_CHART 	LABEL = "Select General Ledger"
 // 	   INFORMAT= "??PICKID(SELECT A.IQID, A.NAME FROM GLCHART A, GLENTITYCHART B WHERE ??FILTER AND (A.IQID = B.CHART) AND (A.IQDELETED=0) AND (B.IQDELETED=0) AND (B.FUND IN (?));{IQID_FUND})" NOTNULL;
-// %PARAM DATE LABEL="Reference date" TYPE=DATE DEFAULT = "31/12/2017" NOTNULL; 
+// %PARAM DATE LABEL="Reference date" TYPE=DATE DEFAULT = "31/12/2017" NOTNULL;
 
-LIBNAME ODIR "." ; 
+LIBNAME ODIR "." ;
 
 // Create the Query to extract the data
 %LET SQLQUERY = %SQLQUERY + "select glaccount.accountno as AccountNumber, ";
@@ -22,7 +22,7 @@ LIBNAME ODIR "." ;
 %LET SQLQUERY = %SQLQUERY + "       glentry.draft, ";
 %LET SQLQUERY = %SQLQUERY + "       glentry.amount 		as Amount, ";
 %LET SQLQUERY = %SQLQUERY + "       glentry.amount2		as Amount2, ";
-%LET SQLQUERY = %SQLQUERY + "       glentry.currency2 	as Currency2, ";
+// %LET SQLQUERY = %SQLQUERY + "       glentry.currency2 	as Currency2, ";
 %LET SQLQUERY = %SQLQUERY + "       glentry.keyid1 		as FundIQID, ";
 %LET SQLQUERY = %SQLQUERY + "       glentry.keyid2 		as IAIQID, ";
 %LET SQLQUERY = %SQLQUERY + "       glentry.keyid3 		as FundOpIQID, ";
@@ -32,23 +32,23 @@ LIBNAME ODIR "." ;
 // %LET SQLQUERY = %SQLQUERY + "       case when coalesce(glentry.amount2,0) <=0 then abs(glentry.amount2) else 0 end as Debit2, ";
 // %LET SQLQUERY = %SQLQUERY + "       case when coalesce(glentry.amount2,0) >=0 then abs(glentry.amount2) else 0 end as Crebit2, ";
 %LET SQLQUERY = %SQLQUERY + "       glentry.currency2 as TransactionCurrency ";
-%LET SQLQUERY = %SQLQUERY + "  from glentry, ";                          
-%LET SQLQUERY = %SQLQUERY + "       glaccount, ";                          
-%LET SQLQUERY = %SQLQUERY + "       glchart, ";                            
-%LET SQLQUERY = %SQLQUERY + "       vcfund       fund, ";                  
-%LET SQLQUERY = %SQLQUERY + "       vcfundshare  fshare, ";                
-%LET SQLQUERY = %SQLQUERY + "       vcsubscriber subscr ";                 
-%LET SQLQUERY = %SQLQUERY + " where GLENTRY.ACCOUNT = GLACCOUNT.IQID ";    
-%LET SQLQUERY = %SQLQUERY + "   and GLACCOUNT.CHART = GLCHART.iqid ";      
+%LET SQLQUERY = %SQLQUERY + "  from glentry, ";
+%LET SQLQUERY = %SQLQUERY + "       glaccount, ";
+%LET SQLQUERY = %SQLQUERY + "       glchart, ";
+%LET SQLQUERY = %SQLQUERY + "       vcfund       fund, ";
+%LET SQLQUERY = %SQLQUERY + "       vcfundshare  fshare, ";
+%LET SQLQUERY = %SQLQUERY + "       vcsubscriber subscr ";
+%LET SQLQUERY = %SQLQUERY + " where GLENTRY.ACCOUNT = GLACCOUNT.IQID ";
+%LET SQLQUERY = %SQLQUERY + "   and GLACCOUNT.CHART = GLCHART.iqid ";
 //%LET SQLQUERY = %SQLQUERY + "   and glchart.iqid = '01117DC6F3E14B6C961380419F7A4181' ";
 %LET SQLQUERY = %SQLQUERY + "   and glchart.iqid like '%" & %IQID_CHART & "%' ";
-%LET SQLQUERY = %SQLQUERY + "   and glchart.iqdeleted = 0 ";             
-%LET SQLQUERY = %SQLQUERY + "   and keyclass = 'FUNDOP' ";               
-%LET SQLQUERY = %SQLQUERY + "   and glentry.iqdeleted = 0 ";             
-%LET SQLQUERY = %SQLQUERY + "   and glentry.keyid1 = fund.iqid ";        
-%LET SQLQUERY = %SQLQUERY + "   and glentry.keyid4 = fshare.iqid ";      
-%LET SQLQUERY = %SQLQUERY + "   and glentry.keyid2 = subscr.iqid ";      
-//%LET SQLQUERY = %SQLQUERY + "   and glentry.refdate <= '31-Dec-17' "; 
+%LET SQLQUERY = %SQLQUERY + "   and glchart.iqdeleted = 0 ";
+%LET SQLQUERY = %SQLQUERY + "   and keyclass = 'FUNDOP' ";
+%LET SQLQUERY = %SQLQUERY + "   and glentry.iqdeleted = 0 ";
+%LET SQLQUERY = %SQLQUERY + "   and glentry.keyid1 = fund.iqid ";
+%LET SQLQUERY = %SQLQUERY + "   and glentry.keyid4 = fshare.iqid ";
+%LET SQLQUERY = %SQLQUERY + "   and glentry.keyid2 = subscr.iqid ";
+//%LET SQLQUERY = %SQLQUERY + "   and glentry.refdate <= '31-Dec-17' ";
 %LET SQLQUERY = %SQLQUERY + "   and glentry.refdate <= to_date('" & Format(%DATE,"d/M/yyyy") &"','DD/MM/YYYY') ";
 %LET SQLQUERY = %SQLQUERY + "   order by glaccount.name,glaccount.accountno ";
 
