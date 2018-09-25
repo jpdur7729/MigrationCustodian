@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-09-25 09:15:43 jpdur"
+//                     Time-stamp: "2018-09-25 10:45:24 jpdur"
 // ------------------------------------------------------------------------------
               
 // // // Default fund is Fund 1164
@@ -8,6 +8,13 @@
 // %PARAM IQID_CHART 	LABEL = "Select General Ledger"
 // 	   INFORMAT= "??PICKID(SELECT A.IQID, A.NAME FROM GLCHART A, GLENTITYCHART B WHERE ??FILTER AND (A.IQID = B.CHART) AND (A.IQDELETED=0) AND (B.IQDELETED=0) AND (B.FUND IN (?));{IQID_FUND})" NOTNULL;
 // %PARAM DATE LABEL="Reference date" TYPE=DATE DEFAULT = "31/12/2017" NOTNULL;
+
+// -------------------------------------------------------------------------------------
+// NB for GLENTRY with KEYCLASS = FUNDOP for a given GLCHART are both type of FundOp    
+// MF Call / MF Distrib etc but also fund Operation IF Call / IF Distrib                
+// where the fund is attached to the Investor Account
+// ==> hence the test fund.iqid = %IQID_FUND  
+// -------------------------------------------------------------------------------------
 
 LIBNAME ODIR "." ;
 
@@ -48,6 +55,7 @@ LIBNAME ODIR "." ;
 %LET SQLQUERY = %SQLQUERY + "   and glentry.keyid1 = fund.iqid ";
 %LET SQLQUERY = %SQLQUERY + "   and glentry.keyid4 = fshare.iqid ";
 %LET SQLQUERY = %SQLQUERY + "   and glentry.keyid2 = subscr.iqid ";
+%LET SQLQUERY = %SQLQUERY + "   and fund.iqid like '%" & %IQID_FUND & "%' "; 
 //%LET SQLQUERY = %SQLQUERY + "   and glentry.refdate <= '31-Dec-17' ";
 %LET SQLQUERY = %SQLQUERY + "   and glentry.refdate <= to_date('" & Format(%DATE,"d/M/yyyy") &"','DD/MM/YYYY') ";
 %LET SQLQUERY = %SQLQUERY + "   order by glaccount.name,glaccount.accountno ";

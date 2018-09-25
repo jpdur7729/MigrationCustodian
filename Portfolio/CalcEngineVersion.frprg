@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-09-24 16:09:21 jpdur"
+//                     Time-stamp: "2018-09-25 10:46:54 jpdur"
 // ------------------------------------------------------------------------------
 
 LIBNAME ODIR "." ; 
@@ -266,10 +266,10 @@ DATA WORK.CALL_FUNDOP;
 	 	EXCH_MANAGEMENT_FEES   = 1 ;
 	 	EXCHSF_MANAGEMENT_FEES = 1 ;
 	 ELSE                      
-	 	EXCH_MANAGEMENT_FEES = MANAGEMENT_FEES2/MANAGEMENT_FEES1 ;
-	 	EXCH_MANAGEMENT_FEES = MANAGEMENT_FEES /MANAGEMENT_FEES1 ;
-     END;                                                       
-                                                                
+	 	EXCH_MANAGEMENT_FEES   = MANAGEMENT_FEES2/MANAGEMENT_FEES1 ;
+	 	EXCHSF_MANAGEMENT_FEES = MANAGEMENT_FEES /MANAGEMENT_FEES1 ;
+     END;
+
 	 // Calculate the specific Exchange Rates                   
 	 COLUMN EXCH_MANAGEMENT_FEES_OUTSIDE_COMM 	   TYPE = FLOAT;
 	 COLUMN EXCHSF_MANAGEMENT_FEES_OUTSIDE_COMM    TYPE = FLOAT;
