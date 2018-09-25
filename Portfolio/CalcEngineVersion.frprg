@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-09-24 10:15:26 jpdur"
+//                     Time-stamp: "2018-09-24 16:09:21 jpdur"
 // ------------------------------------------------------------------------------
 
 LIBNAME ODIR "." ; 
@@ -8,41 +8,46 @@ LIBNAME ODIR "." ;
 %PARAM IQID_REGION label="Region{F}RÃ©gion" TYPE=STRING INFORMAT="??XID(ADMROLE)" SHOWSELECTEDITEMS;
 // %PARAM IQID_INVESTOR_FUND LABEL="Or Fund{F}Fonds" TYPE=STRING INFORMAT="??PICKID(VCFUND;FUND)" DEFAULT = "03D769C670D3456C9FF9B18CCBB0F934" ; // Fund 3432 FONDACO
 %PARAM IQID_INVESTOR_FUND LABEL="Or Fund{F}Fonds" TYPE=STRING INFORMAT="??PICKID(VCFUND;FUND)" ; // DEFAULT = "74E9B5A3CE814462A5AFAC32AB33EC01" ; // Fund 4843 Aberdeen Secondary Property
-                                                                                                    
-//---------------------------------------------                                                     
-//  Step 1: Call the calculation Engine                                                             
-//---------------------------------------------                                                     
-/*In order to load indirect datamart*/                                                              
-%DEFINE FOF_INVESTOR_PORTFOLIO_REPORT;                                                              
-                                                                                                    
-/*In order to load direct datamart*/                                                                
-%DEFINE PORTFOLIO_REPORT;                                                                           
-                                                                                                    
-/*In order to load info on investors*/                                                              
-%DEFINE BUILD_INFO_BUSINESS;                                                                        
-                                                                                                    
-/*In order to load date*/                                                                           
-%DEFINE REPORT_DATE;                                                                                
-                                                                                                    
-// Setup Default value                                                                              
-// %LET DATE = YMD(2017,12,31) ;                                                                       
+
+// --------------------------------------------------------------------------------
+// Key data observed on situations where Fund ccy <> Share ccy <> Investor/IA ccy  
+// The corresponding amounts  are  		 AMOUNT   -  AMOUNT1   -  AMOUNT2
+// --------------------------------------------------------------------------------
+
+//---------------------------------------------
+//  Step 1: Call the calculation Engine
+//---------------------------------------------
+/*In order to load indirect datamart*/
+%DEFINE FOF_INVESTOR_PORTFOLIO_REPORT;
+
+/*In order to load direct datamart*/
+%DEFINE PORTFOLIO_REPORT;
+
+/*In order to load info on investors*/
+%DEFINE BUILD_INFO_BUSINESS;
+
+/*In order to load date*/
+%DEFINE REPORT_DATE;
+
+// Setup Default value
+// %LET DATE = YMD(2017,12,31) ;
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// %INCLUDE P_DATE;                                                                                 
-/******************************************************************************                     
-*                                                                                                   
-* Report Input Parameter           P_DATE                                                           
-*                                                                                                   
-* Report date, used in FV_V_PORTCO_TRANSACTIONS and FV_V_FUND_TRANSACTIONS, to filter all           
-* transactions before this date                                                                     
-*                                                                                                   
-*******************************************************************************/                    
+// %INCLUDE P_DATE;
+/******************************************************************************
+*
+* Report Input Parameter           P_DATE
+*
+* Report date, used in FV_V_PORTCO_TRANSACTIONS and FV_V_FUND_TRANSACTIONS, to filter all
+* transactions before this date
+*
+*******************************************************************************/
 %PARAM USECALCENGINE LABEL="Use calculation engine?{F} Utiliser le moteur de calcul ?" TYPE=BOOLEAN DEFAULT=TRUE;
-                                                                                                    
-%DEFINE REPORT_DATE;                                                                                
-                                                                                                    
-// %PARAM DATE LABEL="Reference date{F}Date d'arrêté" TYPE=DATE DEFAULT="31/12/2017" NOTNULL;    
-%PARAM DATE LABEL="Reference date{F}Date d'arrêté" TYPE=DATE NOTNULL; 
+
+%DEFINE REPORT_DATE;
+
+// %PARAM DATE LABEL="Reference date{F}Date d'arrêté" TYPE=DATE DEFAULT="31/12/2017" NOTNULL;
+%PARAM DATE LABEL="Reference date{F}Date d'arrêté" TYPE=DATE NOTNULL;
 
 %IF %USECALCENGINE %THEN
     %DEFINE DATAMART_COMPATIBILITY;
@@ -52,7 +57,7 @@ LIBNAME ODIR "." ;
 
 %LET USECALCENGINE =TRUE;
 %DEFINE DATAMART_COMPATIBILITY;
-                 
+
 // Final Investors
 DATA WORK.table_investors_final;
 	 COLUMN INVESTOR_ID TYPE=STRING;
@@ -185,16 +190,19 @@ DATA WORK.COMMITMENT_FUNDOP;
 
      // Exchange Rate for Commitment
 	 COLUMN EXCH_COMMITMENT 	TYPE=FLOAT;
-                                    
-	 OPINDEX		 = 1;           
-	 DRAFT   		 = "No" ;       
-     EXCLUDEFROMCASH = "Yes" ;      
-     GLMANUALENTRIES = "Yes" ;      
-                                    
-	 IF NZ(COMMITMENT,0) = 0 THEN
-	 	EXCH_COMMITMENT = 1 ;
-	 ELSE
-	 	EXCH_COMMITMENT = COMMITMENT2/COMMITMENT ;
+	 COLUMN EXCHSF_COMMITMENT 	TYPE=FLOAT;
+                  
+	 OPINDEX		 = 1;
+	 DRAFT   		 = "No" ;
+     EXCLUDEFROMCASH = "Yes" ;
+     GLMANUALENTRIES = "Yes" ;
+                    
+	 IF NZ(COMMITMENT1,0) = 0 THEN
+	 	EXCH_COMMITMENT   = 1 ;
+	 	EXCHSF_COMMITMENT = 1 ;
+	 ELSE                 
+	 	EXCH_COMMITMENT   = COMMITMENT2/COMMITMENT1 ;
+	 	EXCHSF_COMMITMENT = COMMITMENT /COMMITMENT1 ;
      END;
 
 	 // Description specific
@@ -226,138 +234,174 @@ DATA WORK.CALL_FUNDOP;
 	 CAPITAL_CALL_INSIDE_COMM1 = NZ(CAPITAL_CALL_INSIDE_COMM1,0.0) + NZ(CAPITAL_CALL_OUTSIDE_COMM1,0.0) ;
 	 CAPITAL_CALL_INSIDE_COMM2 = NZ(CAPITAL_CALL_INSIDE_COMM2,0.0) + NZ(CAPITAL_CALL_OUTSIDE_COMM2,0.0) ;
 
-	 // Calculate the specific Exchange Rates
-	 COLUMN EXCH_CAPITAL_CALL_INSIDE_COMM 	   TYPE = FLOAT;
-
-	 IF NZ(CAPITAL_CALL_INSIDE_COMM,0) = 0 THEN
-	 	EXCH_CAPITAL_CALL_INSIDE_COMM = 1 ;
-	 ELSE
-	 	EXCH_CAPITAL_CALL_INSIDE_COMM = CAPITAL_CALL_INSIDE_COMM2/CAPITAL_CALL_INSIDE_COMM ;
-     END;
-
-   	 // Calculate the specific Exchange Rates
-	 COLUMN EXCH_CAPITAL_CALL_OUTSIDE_COMM 	   TYPE = FLOAT;
-
-	 IF NZ(CAPITAL_CALL_OUTSIDE_COMM,0) = 0 THEN
-	 	EXCH_CAPITAL_CALL_OUTSIDE_COMM = 1 ;
-	 ELSE
-	 	EXCH_CAPITAL_CALL_OUTSIDE_COMM = CAPITAL_CALL_OUTSIDE_COMM2/CAPITAL_CALL_OUTSIDE_COMM ;
-     END;
-
-	 // Calculate the specific Exchange Rates
-	 COLUMN EXCH_MANAGEMENT_FEES 	   TYPE = FLOAT;
-
-	 IF NZ(MANAGEMENT_FEES,0) = 0 THEN
-	 	EXCH_MANAGEMENT_FEES = 1 ;
-	 ELSE
-	 	EXCH_MANAGEMENT_FEES = MANAGEMENT_FEES2/MANAGEMENT_FEES ;
-     END;                                                      
-                                                               
-	 // Calculate the specific Exchange Rates                  
-	 COLUMN EXCH_MANAGEMENT_FEES_OUTSIDE_COMM 	   TYPE = FLOAT;
-                                                               
-	 IF NZ(MANAGEMENT_FEES_OUTSIDE_COMM,0) = 0 THEN            
-	 	EXCH_MANAGEMENT_FEES_OUTSIDE_COMM = 1 ;                
-	 ELSE                                                      
-	 	EXCH_MANAGEMENT_FEES_OUTSIDE_COMM = MANAGEMENT_FEES_OUTSIDE_COMM2/MANAGEMENT_FEES_OUTSIDE_COMM ;
-     END;                                
-                                         
-	 // Calculate the specific Exchange Rates
-	 COLUMN EXCH_OTHER_FEES 	   TYPE = FLOAT;
-                                         
-	 IF NZ(OTHER_FEES,0) = 0 THEN        
-	 	EXCH_OTHER_FEES = 1 ;            
+	 // Calculate the specific Exchange Rates                      
+	 COLUMN EXCH_CAPITAL_CALL_INSIDE_COMM 	   TYPE = FLOAT;       
+	 COLUMN EXCHSF_CAPITAL_CALL_INSIDE_COMM    TYPE = FLOAT;       
+                                                                   
+	 IF NZ(CAPITAL_CALL_INSIDE_COMM1,0) = 0 THEN                   
+	 	EXCH_CAPITAL_CALL_INSIDE_COMM   = 1 ;                      
+	 	EXCHSF_CAPITAL_CALL_INSIDE_COMM = 1 ;                      
+	 ELSE                                                          
+	 	EXCH_CAPITAL_CALL_INSIDE_COMM   = CAPITAL_CALL_INSIDE_COMM2/CAPITAL_CALL_INSIDE_COMM1 ;
+	 	EXCHSF_CAPITAL_CALL_INSIDE_COMM = CAPITAL_CALL_INSIDE_COMM /CAPITAL_CALL_INSIDE_COMM1 ;
+     END;                                                          
+                                                                   
+   	 // Calculate the specific Exchange Rates                      
+	 COLUMN EXCH_CAPITAL_CALL_OUTSIDE_COMM 	   TYPE = FLOAT;       
+	 COLUMN EXCHSF_CAPITAL_CALL_OUTSIDE_COMM   TYPE = FLOAT;
+                                               
+	 IF NZ(CAPITAL_CALL_OUTSIDE_COMM1,0) = 0 THEN
+	 	EXCH_CAPITAL_CALL_OUTSIDE_COMM 	 = 1 ;
+	 	EXCHSF_CAPITAL_CALL_OUTSIDE_COMM = 1 ;
 	 ELSE                                
-	 	EXCH_OTHER_FEES = OTHER_FEES2/OTHER_FEES ;
-     END;
-
-	 // Calculate the specific Exchange Rates
+	 	EXCH_CAPITAL_CALL_OUTSIDE_COMM 	 = CAPITAL_CALL_OUTSIDE_COMM2/CAPITAL_CALL_OUTSIDE_COMM1 ;
+	 	EXCHSF_CAPITAL_CALL_OUTSIDE_COMM = CAPITAL_CALL_OUTSIDE_COMM /CAPITAL_CALL_OUTSIDE_COMM1 ;
+     END;                                                            
+                                                                     
+	 // Calculate the specific Exchange Rates                        
+	 COLUMN EXCH_MANAGEMENT_FEES 	   TYPE = FLOAT;                 
+	 COLUMN EXCHSF_MANAGEMENT_FEES 	   TYPE = FLOAT;
+                                           
+	 IF NZ(MANAGEMENT_FEES1,0) = 0 THEN     
+	 	EXCH_MANAGEMENT_FEES   = 1 ;
+	 	EXCHSF_MANAGEMENT_FEES = 1 ;
+	 ELSE                      
+	 	EXCH_MANAGEMENT_FEES = MANAGEMENT_FEES2/MANAGEMENT_FEES1 ;
+	 	EXCH_MANAGEMENT_FEES = MANAGEMENT_FEES /MANAGEMENT_FEES1 ;
+     END;                                                       
+                                                                
+	 // Calculate the specific Exchange Rates                   
+	 COLUMN EXCH_MANAGEMENT_FEES_OUTSIDE_COMM 	   TYPE = FLOAT;
+	 COLUMN EXCHSF_MANAGEMENT_FEES_OUTSIDE_COMM    TYPE = FLOAT;
+                                                               
+	 IF NZ(MANAGEMENT_FEES_OUTSIDE_COMM1,0) = 0 THEN            
+	 	EXCH_MANAGEMENT_FEES_OUTSIDE_COMM   = 1 ;                
+	 	EXCHSF_MANAGEMENT_FEES_OUTSIDE_COMM = 1 ;
+	 ELSE                                                      
+	 	EXCH_MANAGEMENT_FEES_OUTSIDE_COMM   = MANAGEMENT_FEES_OUTSIDE_COMM2/MANAGEMENT_FEES_OUTSIDE_COMM1 ;
+	 	EXCHSF_MANAGEMENT_FEES_OUTSIDE_COMM = MANAGEMENT_FEES_OUTSIDE_COMM /MANAGEMENT_FEES_OUTSIDE_COMM1 ;
+     END;                                                                                                
+                                                                                                         
+	 // Calculate the specific Exchange Rates                                                            
+	 COLUMN EXCH_OTHER_FEES 	   TYPE = FLOAT;                                                         
+	 COLUMN EXCHSF_OTHER_FEES 	   TYPE = FLOAT;                                                         
+                  
+	 IF NZ(OTHER_FEES1,0) = 0 THEN        
+	 	EXCH_OTHER_FEES   = 1 ;
+	 	EXCHSF_OTHER_FEES = 1 ;
+	 ELSE                                
+	 	EXCH_OTHER_FEES   = OTHER_FEES2/OTHER_FEES1 ;
+	 	EXCHSF_OTHER_FEES = OTHER_FEES /OTHER_FEES1 ;
+     END;                                          
+                                                   
+	 // Calculate the specific Exchange Rates      
 	 COLUMN EXCH_OTHER_FEES_OUTSIDE_COMM 	   TYPE = FLOAT;
-
-	 IF NZ(OTHER_FEES_OUTSIDE_COMM,0) = 0 THEN
-	 	EXCH_OTHER_FEES_OUTSIDE_COMM = 1 ;
-	 ELSE
-	 	EXCH_OTHER_FEES_OUTSIDE_COMM = OTHER_FEES_OUTSIDE_COMM2/OTHER_FEES_OUTSIDE_COMM ;
-     END;
-
-	 OUTPUT;
-RUN;
-
-// DISTRIBUTION: Add a set of standard fields for import
-// OPINDEX - DRAFT	- EXCLUDEFROMCASH - GLMANUALENTRIES
-DATA WORK.DISTRIBUTION_FUNDOP;
-	 SET WORK.DISTRIBUTION_FUNDOP;
-     COLUMN OPINDEX				TYPE=INTEGER;
-     COLUMN DRAFT				TYPE=STRING;
-     COLUMN EXCLUDEFROMCASH  	TYPE=STRING;
-     COLUMN GLMANUALENTRIES  	TYPE=STRING;
-	 COLUMN	DESCRIPTION 		TYPE=STRING;
-
-	 // Description specific
-	 DESCRIPTION = INVESTOR_NAME & " Distribution " & FORMAT(REPORT_DATE,"dd/MM/yyyy");
-
-	 OPINDEX		 = 3;
-	 DRAFT   		 = "No" ;
-     EXCLUDEFROMCASH = "Yes" ;
-     GLMANUALENTRIES = "Yes" ;
-
-	 // Calculate the specific Exchange Rates
-	 COLUMN EXCH_RETURNCAPITAL 	   TYPE = FLOAT;
-
-	 IF NZ(RETURN_OF_CAPITAL,0) = 0 THEN
-	 	EXCH_RETURNCAPITAL = 1 ;
-	 ELSE
-	 	EXCH_RETURNCAPITAL = RETURN_OF_CAPITAL2/RETURN_OF_CAPITAL ;
-     END;
-
-	 // Calculate the specific Exchange Rates
-	 COLUMN EXCH_REDRAWABLE_CAPITAL 	   TYPE = FLOAT;
-
-	 IF NZ(REDRAWABLE_CAPITAL,0) = 0 THEN
-	 	EXCH_REDRAWABLE_CAPITAL = 1 ;
-	 ELSE
-	 	EXCH_REDRAWABLE_CAPITAL = REDRAWABLE_CAPITAL2/REDRAWABLE_CAPITAL ;
-     END;
-
-	 // Calculate the specific Exchange Rates
+	 COLUMN EXCHSF_OTHER_FEES_OUTSIDE_COMM 	   TYPE = FLOAT;
+                  
+	 IF NZ(OTHER_FEES_OUTSIDE_COMM1,0) = 0 THEN
+	 	EXCH_OTHER_FEES_OUTSIDE_COMM   = 1 ;
+	 	EXCHSF_OTHER_FEES_OUTSIDE_COMM = 1 ;
+	 ELSE                              
+	 	EXCH_OTHER_FEES_OUTSIDE_COMM   = OTHER_FEES_OUTSIDE_COMM2/OTHER_FEES_OUTSIDE_COMM1 ;
+	 	EXCHSF_OTHER_FEES_OUTSIDE_COMM = OTHER_FEES_OUTSIDE_COMM /OTHER_FEES_OUTSIDE_COMM1 ;
+     END;                                                                                 
+                                                                                          
+	 OUTPUT;                                                                              
+RUN;                                                                                      
+                                                                                          
+// DISTRIBUTION: Add a set of standard fields for import                                  
+// OPINDEX - DRAFT	- EXCLUDEFROMCASH - GLMANUALENTRIES                                   
+DATA WORK.DISTRIBUTION_FUNDOP;                                                            
+	 SET WORK.DISTRIBUTION_FUNDOP;                                                        
+     COLUMN OPINDEX				TYPE=INTEGER;                                             
+     COLUMN DRAFT				TYPE=STRING;                                              
+     COLUMN EXCLUDEFROMCASH  	TYPE=STRING;                                              
+     COLUMN GLMANUALENTRIES  	TYPE=STRING;                                              
+	 COLUMN	DESCRIPTION 		TYPE=STRING;                                              
+                                                                                          
+	 // Description specific                                                              
+	 DESCRIPTION = INVESTOR_NAME & " Distribution " & FORMAT(REPORT_DATE,"dd/MM/yyyy");   
+                                                                                          
+	 OPINDEX		 = 3;                                                                 
+	 DRAFT   		 = "No" ;                                                             
+     EXCLUDEFROMCASH = "Yes" ;                                                            
+     GLMANUALENTRIES = "Yes" ;                                                            
+                                                                                          
+	 // Calculate the specific Exchange Rates                                             
+	 COLUMN EXCH_RETURNCAPITAL 	   TYPE = FLOAT;                                          
+	 COLUMN EXCHSF_RETURNCAPITAL   TYPE = FLOAT;                                          
+                                   
+	 IF NZ(RETURN_OF_CAPITAL1,0) = 0 THEN
+	 	EXCH_RETURNCAPITAL   = 1 ;
+	 	EXCHSF_RETURNCAPITAL = 1 ;
+	 ELSE                    
+	 	EXCH_RETURNCAPITAL   = RETURN_OF_CAPITAL2/RETURN_OF_CAPITAL1 ;
+	 	EXCHSF_RETURNCAPITAL = RETURN_OF_CAPITAL /RETURN_OF_CAPITAL1 ;
+     END;                                                           
+                                                                    
+	 // Calculate the specific Exchange Rates                       
+	 COLUMN EXCH_REDRAWABLE_CAPITAL 	   TYPE = FLOAT;            
+	 COLUMN EXCHSF_REDRAWABLE_CAPITAL 	   TYPE = FLOAT;            
+                  
+	 IF NZ(REDRAWABLE_CAPITAL1,0) = 0 THEN
+	 	EXCH_REDRAWABLE_CAPITAL   = 1 ;
+	 	EXCHSF_REDRAWABLE_CAPITAL = 1 ;
+	 ELSE                         
+	 	EXCH_REDRAWABLE_CAPITAL   = REDRAWABLE_CAPITAL2/REDRAWABLE_CAPITAL1 ;
+	 	EXCHSF_REDRAWABLE_CAPITAL = REDRAWABLE_CAPITAL /REDRAWABLE_CAPITAL1 ;
+     END;                                                                  
+                                                                           
+	 // Calculate the specific Exchange Rates                              
 	 COLUMN EXCH_DIVIDENDS 	   TYPE = FLOAT;
-
-	 IF NZ(DIVIDENDS,0) = 0 THEN
-	 	EXCH_DIVIDENDS = 1 ;
-	 ELSE
-	 	EXCH_DIVIDENDS = DIVIDENDS2/DIVIDENDS ;
-     END;
-
-	 // Calculate the specific Exchange Rates
-	 COLUMN EXCH_GAIN_LOSS 	   TYPE = FLOAT;
-
-	 IF NZ(GAIN_LOSS,0) = 0 THEN
-	 	EXCH_GAIN_LOSS = 1 ;
-	 ELSE
-	 	EXCH_GAIN_LOSS = GAIN_LOSS2/GAIN_LOSS ;
-     END;
-
-	 // Calculate the specific Exchange Rates
+	 COLUMN EXCHSF_DIVIDENDS   TYPE = FLOAT;
+                               
+	 IF NZ(DIVIDENDS1,0) = 0 THEN
+	 	EXCH_DIVIDENDS   = 1 ;
+	 	EXCHSF_DIVIDENDS = 1 ;
+	 ELSE                
+	 	EXCH_DIVIDENDS   = DIVIDENDS2/DIVIDENDS1 ;
+	 	EXCHSF_DIVIDENDS = DIVIDENDS /DIVIDENDS1 ;
+     END;                                       
+                                                
+	 // Calculate the specific Exchange Rates   
+	 COLUMN EXCH_GAIN_LOSS 	   TYPE = FLOAT;    
+	 COLUMN EXCHSF_GAIN_LOSS   TYPE = FLOAT;
+                               
+	 IF NZ(GAIN_LOSS1,0) = 0 THEN
+	 	EXCH_GAIN_LOSS   = 1 ;
+	 	EXCHSF_GAIN_LOSS = 1 ;
+	 ELSE                
+	 	EXCH_GAIN_LOSS   = GAIN_LOSS2/GAIN_LOSS1 ;
+	 	EXCHSF_GAIN_LOSS = GAIN_LOSS /GAIN_LOSS1 ;
+     END;                                       
+                                                
+	 // Calculate the specific Exchange Rates   
 	 COLUMN EXCH_OTHER_INCOME 	   TYPE = FLOAT;
-
-	 IF NZ(OTHER_INCOME,0) = 0 THEN
-	 	EXCH_OTHER_INCOME = 1 ;
-	 ELSE
-	 	EXCH_OTHER_INCOME = OTHER_INCOME2/OTHER_INCOME ;
-     END;
-     
-	 // Calculate the specific Exchange Rates
-	 COLUMN EXCH_INTERESTS 	   TYPE = FLOAT;
-
-	 IF NZ(INTERESTS,0) = 0 THEN
-	 	EXCH_INTERESTS = 1 ;
-	 ELSE
-	 	EXCH_INTERESTS = INTERESTS2/INTERESTS ;
-     END;
-
-	 OUTPUT;
-RUN;
-
+	 COLUMN EXCHSF_OTHER_INCOME    TYPE = FLOAT;
+                                   
+	 IF NZ(OTHER_INCOME1,0) = 0 THEN
+	 	EXCH_OTHER_INCOME   = 1 ;
+	 	EXCHSF_OTHER_INCOME = 1 ;
+	 ELSE                   
+	 	EXCH_OTHER_INCOME   = OTHER_INCOME2/OTHER_INCOME1 ;
+	 	EXCHSF_OTHER_INCOME = OTHER_INCOME /OTHER_INCOME1 ;
+     END;                                                
+                                                         
+	 // Calculate the specific Exchange Rates            
+	 COLUMN EXCH_INTERESTS 	   TYPE = FLOAT;             
+	 COLUMN EXCHSF_INTERESTS   TYPE = FLOAT;
+                               
+	 IF NZ(INTERESTS1,0) = 0 THEN
+	 	EXCH_INTERESTS   = 1 ;
+	 	EXCHSF_INTERESTS = 1 ;
+	 ELSE                
+	 	EXCH_INTERESTS   = INTERESTS2/INTERESTS1 ;
+	 	EXCHSF_INTERESTS = INTERESTS /INTERESTS1 ;
+     END;                                       
+                                                
+	 OUTPUT;                                    
+RUN;                                            
+                                                
 //------------------------------------------------------------------
 //  Step 3: Split by types operations and proccess them accordingly
 //------------------------------------------------------------------
@@ -365,8 +409,8 @@ PROC PRINT DATA=WORK.COMMITMENT_FUNDOP		; RUN;
 PROC PRINT DATA=WORK.CALL_FUNDOP 	   		; RUN;
 PROC PRINT DATA=WORK.DISTRIBUTION_FUNDOP    ; RUN;
 //PROC PRINT DATA=WORK.VALORISATION_FUNDOP    ; RUN;
-
-
+                                                
+                                                
 //------------------------------------------------------------------
 //  Step 4: Create Empty Structures for the generation of document
 //------------------------------------------------------------------
@@ -383,7 +427,7 @@ DATA ODIR.DISTRIBUTION_FUNDOP_OTHER 	; SET WORK.DISTRIBUTION_FUNDOP   	; STOP ; 
 DATA ODIR.DISTRIBUTION_FUNDOP_GAIN		; SET WORK.DISTRIBUTION_FUNDOP   	; STOP ; RUN;
 DATA ODIR.DISTRIBUTION_FUNDOP_INTERESTS ; SET WORK.DISTRIBUTION_FUNDOP   	; STOP ; RUN;
 DATA ODIR.DISTRIBUTION_FUNDOP_DIVIDENDS ; SET WORK.DISTRIBUTION_FUNDOP   	; STOP ; RUN;
-                                    
+
 // Create the Filtered table to be used to generate the exact elements
 DATA WORK.DISTRIBUTION_FUNDOP_REDRAW 	; SET WORK.DISTRIBUTION_FUNDOP (WHERE NZ(REDRAWABLE_CAPITAL,0.0) <> 0.0)   	;  RUN;
 DATA WORK.DISTRIBUTION_FUNDOP_OTHER 	; SET WORK.DISTRIBUTION_FUNDOP (WHERE NZ(OTHER_INCOME      ,0.0) <> 0.0)  	;  RUN;

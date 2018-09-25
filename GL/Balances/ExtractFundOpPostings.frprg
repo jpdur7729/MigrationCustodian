@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-09-24 15:45:18 jpdur"
+//                     Time-stamp: "2018-09-25 09:15:43 jpdur"
 // ------------------------------------------------------------------------------
               
 // // // Default fund is Fund 1164
@@ -102,7 +102,7 @@ PROC PRINT DATA=WORK.FUNDOP_POSTINGS_DETAILS MAXROWS=10; RUN;
 // As a result the date should be replaced by 31/12/2017
 // ----------------------------------------------------------------
 PROC MEANS DATA=WORK.FUNDOP_POSTINGS_DETAILS OUT=WORK.FUNDOP_POSTINGS ;
-     CLASS ACCOUNT ACCOUNTNAME FUND SHARECLASS INVESTORACCOUNT GLCHART DRAFT FUNDIQID IAIQID FUNDOPIQID SHARECLASSIQID TRANSACTIONCURRENCY ACCOUNT_CLASS_NUMBER ACCOUNT_NUMBER LENGHT;
+     CLASS ACCOUNT ACCOUNTNAME FUND SHARECLASS INVESTORACCOUNT GLCHART DRAFT FUNDIQID IAIQID SHARECLASSIQID TRANSACTIONCURRENCY ACCOUNT_CLASS_NUMBER ACCOUNT_NUMBER LENGHT;
 	 SUM AMOUNT  (LABEL="Amount"  NAME=AMOUNT) ;
 	 SUM AMOUNT2 (LABEL="Amount2" NAME=AMOUNT2);
 RUN;
@@ -127,4 +127,12 @@ DATA ODIR.FUNDOP_POSTINGS;
 	 STOP;
 RUN;
 
+                                     
+// Debug Data set to verify data
+DATA ODIR.ALL_FUNDOP_POSTINGS;
+	 SET WORK.FUNDOP_POSTINGS;
+RUN;
+DATA ODIR.ALL_FUNDOP_POSTINGS_DETAILS;
+	 SET WORK.FUNDOP_POSTINGS_DETAILS;
+RUN;
 
