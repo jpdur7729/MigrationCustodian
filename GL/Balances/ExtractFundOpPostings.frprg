@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-09-25 10:45:24 jpdur"
+//                     Time-stamp: "2018-09-25 14:59:23 jpdur"
 // ------------------------------------------------------------------------------
               
 // // // Default fund is Fund 1164
@@ -47,6 +47,8 @@ LIBNAME ODIR "." ;
 %LET SQLQUERY = %SQLQUERY + "       vcsubscriber subscr ";
 %LET SQLQUERY = %SQLQUERY + " where GLENTRY.ACCOUNT = GLACCOUNT.IQID ";
 %LET SQLQUERY = %SQLQUERY + "   and GLACCOUNT.CHART = GLCHART.iqid ";
+// Eliminate the Suspens Account as they are handled by the main balancce extract
+%LET SQLQUERY = %SQLQUERY + "   and coalesce(GLACCOUNT.SUSPENSACCOUNT,0) = 0 ";
 //%LET SQLQUERY = %SQLQUERY + "   and glchart.iqid = '01117DC6F3E14B6C961380419F7A4181' ";
 %LET SQLQUERY = %SQLQUERY + "   and glchart.iqid like '%" & %IQID_CHART & "%' ";
 %LET SQLQUERY = %SQLQUERY + "   and glchart.iqdeleted = 0 ";
@@ -55,7 +57,7 @@ LIBNAME ODIR "." ;
 %LET SQLQUERY = %SQLQUERY + "   and glentry.keyid1 = fund.iqid ";
 %LET SQLQUERY = %SQLQUERY + "   and glentry.keyid4 = fshare.iqid ";
 %LET SQLQUERY = %SQLQUERY + "   and glentry.keyid2 = subscr.iqid ";
-%LET SQLQUERY = %SQLQUERY + "   and fund.iqid like '%" & %IQID_FUND & "%' "; 
+%LET SQLQUERY = %SQLQUERY + "   and fund.iqid like '%" & %IQID_FUND & "%' ";
 //%LET SQLQUERY = %SQLQUERY + "   and glentry.refdate <= '31-Dec-17' ";
 %LET SQLQUERY = %SQLQUERY + "   and glentry.refdate <= to_date('" & Format(%DATE,"d/M/yyyy") &"','DD/MM/YYYY') ";
 %LET SQLQUERY = %SQLQUERY + "   order by glaccount.name,glaccount.accountno ";
@@ -78,7 +80,7 @@ DATA WORK.FUNDOP_POSTINGS_DETAILS;
 	 COLUMN LENGHT 		   		 TYPE = FLOAT;
 
 	 // Define the account class number
-	 ACCOUNT_CLASS_NUMBER = MID(ACCOUNT_NUMBER,1,1) ;
+	 ACCOUNT_CLASS_NUMBER = MID(ACCOUNT,1,1) ;
 
 	 // Position of the - in the account number
 	 LENGHT = FIND(ACCOUNT,'-');
@@ -110,7 +112,9 @@ PROC PRINT DATA=WORK.FUNDOP_POSTINGS_DETAILS MAXROWS=10; RUN;
 // As a result the date should be replaced by 31/12/2017
 // ----------------------------------------------------------------
 PROC MEANS DATA=WORK.FUNDOP_POSTINGS_DETAILS OUT=WORK.FUNDOP_POSTINGS ;
-     CLASS ACCOUNT ACCOUNTNAME FUND SHARECLASS INVESTORACCOUNT GLCHART DRAFT FUNDIQID IAIQID SHARECLASSIQID TRANSACTIONCURRENCY ACCOUNT_CLASS_NUMBER ACCOUNT_NUMBER LENGHT;
+//	    In some cases ACCOUNTNAME has been customized and there are different accountname consilidated into a unique 1 ACCOUNT_NUMBER
+//     CLASS ACCOUNT ACCOUNTNAME FUND SHARECLASS INVESTORACCOUNT GLCHART FUNDIQID IAIQID SHARECLASSIQID TRANSACTIONCURRENCY ACCOUNT_CLASS_NUMBER ACCOUNT_NUMBER LENGHT;
+     CLASS FUND SHARECLASS INVESTORACCOUNT GLCHART FUNDIQID IAIQID SHARECLASSIQID TRANSACTIONCURRENCY ACCOUNT_CLASS_NUMBER ACCOUNT_NUMBER LENGHT;
 	 SUM AMOUNT  (LABEL="Amount"  NAME=AMOUNT) ;
 	 SUM AMOUNT2 (LABEL="Amount2" NAME=AMOUNT2);
 RUN;
@@ -126,6 +130,14 @@ DATA WORK.FUNDOP_POSTINGS;
 	GLDATE = %DATE;
 RUN;
 
+// --------------------------------------------------------------------------------------------------------------
+// We filter out the accounts which are not class1 and the lines for which there are some balance to be migrated 
+// --------------------------------------------------------------------------------------------------------------
+DATA WORK.FUNDOP_POSTINGS;
+	SET WORK.FUNDOP_POSTINGS (WHERE ACCOUNT_CLASS_NUMBER="1" AND (NZ(AMOUNT,0.0)<>0.0 or NZ(AMOUNT2,0.0)<>0.0));
+RUN;
+
+
 // Check the data obtained for the consolidation
 PROC PRINT DATA=WORK.FUNDOP_POSTINGS MAXROWS=10; RUN;
 
@@ -135,7 +147,7 @@ DATA ODIR.FUNDOP_POSTINGS;
 	 STOP;
 RUN;
 
-                                     
+
 // Debug Data set to verify data
 DATA ODIR.ALL_FUNDOP_POSTINGS;
 	 SET WORK.FUNDOP_POSTINGS;
