@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-09-25 09:49:14 jpdur"
+//                     Time-stamp: "2018-09-25 17:48:58 jpdur"
 // ------------------------------------------------------------------------------
 
 // Reusing the standard CalcEngine functionalities
@@ -16,51 +16,51 @@
 LIBNAME Std_Output WORK;
 LIBNAME ODIR 	   "." ;
 
-// Debug Data
-DATA ODIR.ALL_DATA_FROM_TB;
-   SET Std_Output.FV_T_GL_CHART_OF_ACCOUNT ;
-RUN;
-// Debug Data
-DATA ODIR.ALL_DATA_FROM_TB_INSTRU;
-   SET Std_Output.FV_T_GL_CHART_OF_ACCOUNT (WHERE SECURITY_ID is not null);
-RUN;
+// // Debug Data
+// DATA ODIR.ALL_DATA_FROM_TB;
+//    SET Std_Output.FV_T_GL_CHART_OF_ACCOUNT ;
+// RUN;
+// // Debug Data
+// DATA ODIR.ALL_DATA_FROM_TB_INSTRU;
+//    SET Std_Output.FV_T_GL_CHART_OF_ACCOUNT (WHERE SECURITY_ID is not null);
+// RUN;
 
 // Reformat the data accordingly keep the columns to get the relevant data
 DATA WORK.T_GL_CHART_OF_ACCOUNT(RENAME = (DEBIT2=DEBIT_CCY CREDIT2=CREDIT_CCY ACCOUNT_CURRENCY=TRANSAC_CURRENCY ));
 	 SET Std_Output.FV_T_GL_CHART_OF_ACCOUNT (KEEP = ACCOUNT_IQID ACCOUNT_CLASS_NUMBER ACCOUNT ACCOUNT_CURRENCY DEBIT CREDIT DEBIT2 CREDIT2 SECURITY SECURITY_ID);
-                                                                                                                                            
-	 // 2 Extra columns                                                                                                                     
-	 COLUMN ACCOUNT_NUMBER TYPE = STRING;                                                                                                   
-	 COLUMN LENGHT 		   TYPE = FLOAT;                                                                                                    
-                                                                                                                                            
-	 // Position of the - in the account number                                                                                             
-	 LENGHT = FIND(ACCOUNT,'-');                                                                                                            
-                                                                                                                                            
-	 // Account Number is the account normalised in order to match FIA requirements                                                         
-	 ACCOUNT_NUMBER = ACCOUNT ;                                                                                                             
-                                                                                                                                            
-	 // ----------------------------------------------------------------------------------------------                                      
-	 // Rule: If not class4 or 5 we stop the account number at the 1st hyphen if it exists                                                  
-	 // 	  for class4/5 after the 1st hyphen we get the currency which is kept for these accounts                                        
-	 // ----------------------------------------------------------------------------------------------                                      
-	 IF LENGHT <> 0 then                                                                                                                    
-		IF ACCOUNT_CLASS_NUMBER <> '5' THEN                                                                                                 
-		   ACCOUNT_NUMBER= LEFT (ACCOUNT,(FIND(ACCOUNT,'-')) - 1 );                                                                         
-	    ELSE                                                                                                                                
-		   ACCOUNT_NUMBER= LEFT (ACCOUNT,(FIND(ACCOUNT,'-')) + 3);                                                                          
-		END;                                                                                                                                
-	END;                                                                                                                                    
-                                                                                                                                            
-	OUTPUT;                                                                                                                                 
-RUN;                                                                                                                                        
-                                                                                                                                            
-// Print the result of the data                                                                                                             
-PROC PRINT DATA = WORK.T_GL_CHART_OF_ACCOUNT; RUN;                                                                                          
-                                                                                                                                            
-// -------------------------------------------------------------------------------------------------                                        
-// As a result of the simplification of the account number we now have a situation by which                                                 
-// different accounts have now been merge into one ==> We thus need to sum the balances accordingly                                         
-// -------------------------------------------------------------------------------------------------                                        
+
+	 // 2 Extra columns
+	 COLUMN ACCOUNT_NUMBER TYPE = STRING;
+	 COLUMN LENGHT 		   TYPE = FLOAT;
+
+	 // Position of the - in the account number
+	 LENGHT = FIND(ACCOUNT,'-');
+
+	 // Account Number is the account normalised in order to match FIA requirements
+	 ACCOUNT_NUMBER = ACCOUNT ;
+
+	 // ----------------------------------------------------------------------------------------------
+	 // Rule: If not class4 or 5 we stop the account number at the 1st hyphen if it exists
+	 // 	  for class4/5 after the 1st hyphen we get the currency which is kept for these accounts
+	 // ----------------------------------------------------------------------------------------------
+	 IF LENGHT <> 0 then
+		IF ACCOUNT_CLASS_NUMBER <> '5' THEN
+		   ACCOUNT_NUMBER= LEFT (ACCOUNT,(FIND(ACCOUNT,'-')) - 1 );
+	    ELSE
+		   ACCOUNT_NUMBER= LEFT (ACCOUNT,(FIND(ACCOUNT,'-')) + 3);
+		END;
+	END;
+
+	OUTPUT;
+RUN;
+
+// Debug: Print the result of the data 
+// PROC PRINT DATA = WORK.T_GL_CHART_OF_ACCOUNT; RUN;
+
+// -------------------------------------------------------------------------------------------------
+// As a result of the simplification of the account number we now have a situation by which
+// different accounts have now been merge into one ==> We thus need to sum the balances accordingly
+// -------------------------------------------------------------------------------------------------
 DATA WORK.T_GL_OPENING_BALANCES (DROP = ACCOUNT_IQID LENGTH ACCOUNT ACCOUNT_CLASS_NUMBER) ;                                                 
 	 SET WORK.T_GL_CHART_OF_ACCOUNT;                                                                                                        
 RUN;                                                                                                                                        
@@ -79,93 +79,157 @@ PROC SORT DATA=WORK.T_OPENING_BALANCES OUT=WORK.T_OPENING_BALANCES;
 	 BY ACCOUNT_NUMBER;                                        
 RUN;                                                           
                                                                
-// Print the result of the data                                
-PROC PRINT DATA = WORK.T_OPENING_BALANCES; RUN;                
-                                                               
+// Debug: Print the result of the data                                
+// PROC PRINT DATA = WORK.T_OPENING_BALANCES; RUN;
+   
 // Create the empty data structure of the table                
 DATA ODIR.T_OPENING_BALANCES;                                  
 	 SET WORK.T_OPENING_BALANCES;                              
 	 STOP;                                                     
 RUN;                                                           
                                                                
-// Store all the opening balance on disk                       
-DATA ODIR.ALL_OPENING_BALANCES;                                
-	 SET WORK.T_OPENING_BALANCES;                              
-RUN;                                                           
-                                                               
-/*                                                             
+// // Store all the opening balance on disk                       
+// DATA ODIR.ALL_OPENING_BALANCES;
+// 	 SET WORK.T_OPENING_BALANCES;
+// RUN;
+
 // ------------------------------------------------------------------------------
 // Step - 2: Extracting the Fund Ops Postings to get the information of the IA
 // ------------------------------------------------------------------------------
 // IQID_CHART is the parameter storing the IQID of the GLCHART that is being used
 // IQID_FUND  is the parameter storing the IQID of the FUND    that is being used
 // DATE       is the parameter storing the Date to be used to filter the postings
-// We now have also the FUND_OP_POSTINGS ready to be processed 
+// We now have also the FUND_OP_POSTINGS ready to be processed
 // ------------------------------------------------------------------------------
-// %INCLUDE "FundOpPostings";                                  
-                                                               
-                                                               
+%INCLUDE "FundOpPostings";
+
 // -----------------------------------------------------------------------------------
 // Step - 3: Filtering from the balances the proper balances from the FundOpPostings
 // -----------------------------------------------------------------------------------
-                                                               
-// Extract some data to get the Fund Name, the Chart Name      
+
+// Extract some data to get the Fund Name, the Chart Name
 %LET SQLEXTRACT = %SQLEXTRACT + "select glchart.name as GLCHART, fund.fund as FUND ";
 %LET SQLEXTRACT = %SQLEXTRACT + "from GLCHART glchart,VCFUND fund, GLENTITYCHART  ";
 %LET SQLEXTRACT = %SQLEXTRACT + "where glchart.iqid like '%" & %IQID_CHART & "%' ";
 %LET SQLEXTRACT = %SQLEXTRACT + " and glentitychart.chart = glchart.iqid ";
 %LET SQLEXTRACT = %SQLEXTRACT + " and glentitychart.fund  = fund.iqid ";
-                                                               
-// Create the temporary table                                  
+
+// Create the temporary table
 PROC SQLIMPORT DATA=WORK.COMPLEMENTARY_COLUMNS SQL=%SQLEXTRACT;
-RUN;                                                           
-                                                               
-// Add a few extra fields such as the reference date           
-DATA WORK.COMPLEMENTARY_COLUMNS;                               
-	 SET WORK.COMPLEMENTARY_COLUMNS;                           
-                                                               
-	 COLUMN GLDATE TYPE=DATE;                                  
-	 GLDATE = %DATE;                                           
-                                                               
-     OUTPUT;                                                   
-RUN;                                                           
-                                                               
+RUN;
+
+// Add a few extra fields such as the reference date
+DATA WORK.COMPLEMENTARY_COLUMNS;
+	 SET WORK.COMPLEMENTARY_COLUMNS;
+                           
+	 COLUMN GLDATE TYPE=DATE;
+	 GLDATE = %DATE;       
+                           
+     OUTPUT;               
+RUN;                       
+
+// Debug Extra Table
+// PROC PRINT DATA=WORK.COMPLEMENTARY_COLUMNS; RUN;
+   
 // Reformat the Opening Balance in order to have a set of data Ready to import
-DATA WORK.OPENING_BALANCES                                     
-	 MERGE WORK.T_OPENING_BALANCES WORK.COMPLEMENTARY_COLUMNS; 
-RUN;                                                           
-                                                               
-// Now Reformat the
-*/
+DATA WORK.OPENING_BALANCES (RENAME=(TRANSAC_CURRENCY=TRANSACTIONCURRENCY));
+	 MERGE WORK.T_OPENING_BALANCES WORK.COMPLEMENTARY_COLUMNS;
+RUN;
 
-/* FUNDOP_POSTINGS
-COLUMN "ACCOUNT" LABEL="ACCOUNT" TYPE="STRING";
-COLUMN "ACCOUNTNAME" LABEL="ACCOUNTNAME" TYPE="STRING";
-COLUMN "FUND" LABEL="FUND" TYPE="STRING";
-COLUMN "SHARECLASS" LABEL="SHARECLASS" TYPE="STRING";
-COLUMN "INVESTORACCOUNT" LABEL="INVESTORACCOUNT" TYPE="STRING";
-COLUMN "GLCHART" LABEL="GLCHART" TYPE="STRING";
-COLUMN "GLDATE" LABEL="GLDATE" TYPE="DATE";
-COLUMN "DRAFT" LABEL="DRAFT" TYPE="FLOAT";
-COLUMN "AMOUNT" LABEL="AMOUNT" TYPE="FLOAT";
-COLUMN "AMOUNT2" LABEL="AMOUNT2" TYPE="FLOAT";
-COLUMN "CURRENCY2" LABEL="CURRENCY2" TYPE="STRING";
-COLUMN "FUNDIQID" LABEL="FUNDIQID" TYPE="STRING";
-COLUMN "IAIQID" LABEL="IAIQID" TYPE="STRING";
-COLUMN "FUNDOPIQID" LABEL="FUNDOPIQID" TYPE="STRING";
-COLUMN "SHARECLASSIQID" LABEL="SHARECLASSIQID" TYPE="STRING";
-COLUMN "TRANSACTIONCURRENCY" LABEL="TRANSACTIONCURRENCY" TYPE="STRING";
-COLUMN "ACCOUNT_CLASS_NUMBER" LABEL="ACCOUNT_CLASS_NUMBER" TYPE="STRING";
-COLUMN "ACCOUNT_NUMBER" LABEL="ACCOUNT_NUMBER" TYPE="STRING";
-COLUMN "LENGHT" LABEL="LENGHT" TYPE="FLOAT";
-*/
+// Debug Intermediate table
+// PROC PRINT DATA=WORK.OPENING_BALANCES MAXROWS=10; RUN;
 
-/* Opening Balances
-COLUMN "ACCOUNT_NUMBER" LABEL="ACCOUNT_NUMBER" TYPE="STRING";
-COLUMN "TRANSAC_CURRENCY" LABEL="Account currency{F}Devise du compte" TYPE="STRING";
-COLUMN "DEBIT" LABEL="DEBIT" TYPE="FLOAT" FORMAT="#,###,##0.00";
-COLUMN "CREDIT" LABEL="CREDIT" TYPE="FLOAT" FORMAT="#,###,##0.00";
-COLUMN "DEBIT_CCY" LABEL="DEBIT_CCY" TYPE="FLOAT" FORMAT="#,###,##0.00";
-COLUMN "CREDIT_CCY" LABEL="CREDIT_CCY" TYPE="FLOAT" FORMAT="#,###,##0.00";
-*/
+// ---------------------------------------------------------
+// Now Reformat the resulting table especially Debit/Credit
+// ---------------------------------------------------------
+DATA WORK.OPENING_BALANCES;
+	 SET WORK.OPENING_BALANCES;
 
+	 COLUMN AMOUNT  TYPE=FLOAT;
+	 COLUMN AMOUNT2 TYPE=FLOAT;
+
+	 AMOUNT  = NZ(CREDIT	,0.0) - NZ(DEBIT	,0.0);
+	 AMOUNT2 = NZ(CREDIT_CCY,0.0) - NZ(DEBIT_CCY,0.0);
+
+	OUTPUT;
+RUN;
+        
+// Debug Internediate Table
+// PROC PRINT DATA=WORK.OPENING_BALANCES MAXROWS=10; Title "Next Version";  RUN;
+        
+// Create the Empty Structure
+DATA ODIR.OPENING_BALANCES;
+	 SET WORK.OPENING_BALANCES;
+	 STOP;
+RUN;    
+        
+// -----------------------------------------------------------------------------------
+// Step - 4: Add the columns needed for the balance and take out the data
+// 		  	 imported via FundOps Postings...
+// -----------------------------------------------------------------------------------
+DATA WORK.FUNDOP_NEG_POSTINGS;
+	 SET WORK.FUNDOP_POSTINGS;
+        
+	 AMOUNT  = -AMOUNT ;
+	 AMOUNT2 = -AMOUNT2;
+RUN;    
+        
+// Add the 2 tables together
+DATA WORK.MERGE_BALANCES (KEEP= ACCOUNT_NUMBER FUND GLDATE GLCHART AMOUNT AMOUNT2 TRANSACTIONCURRENCY);
+	 SET WORK.OPENING_BALANCES WORK.FUNDOP_NEG_POSTINGS;
+RUN;    
+        
+// Debug the intermediate data
+// PROC PRINT DATA=WORK.MERGE_BALANCES ; RUN;
+        
+// Create the consolidated amount
+PROC MEANS DATA=WORK.MERGE_BALANCES OUT=WORK.CONSO_BALANCES;
+	 CLASS ACCOUNT_NUMBER FUND GLDATE GLCHART TRANSACTIONCURRENCY;
+	 SUM AMOUNT  (LABEL="Amount"  NAME=AMOUNT) ;
+	 SUM AMOUNT2 (LABEL="Amount2" NAME=AMOUNT2);
+RUN;
+
+
+// // Create Empty Structure
+// DATA ODIR.CONSO_BALANCES;
+// 	 SET WORK.CONSO_BALANCES;
+// 	 STOP;
+// RUN;
+
+// -----------------------------------------------------------------------------------
+// Step - 5: Merge the 2 tables together in one big table
+// -----------------------------------------------------------------------------------
+
+// Add the Keyclass for the different types of Entry
+DATA WORK.CONSO_BALANCES;                           
+	 SET WORK.CONSO_BALANCES (WHERE ROUND(NZ(AMOUNT,0),2)<>0 or ROUND(NZ(AMOUNT2,0),2)<>0) ;
+                                                                                      
+	 // KEYCLASS in GLENTRY is empty for Standard Balance                             
+	 COLUMN CLASSENTRY TYPE=STRING;                                                   
+	 CLASSENTRY = "";                                                                 
+RUN;                                                                                  
+                                                                                      
+// Add the Keyclass for the different types of Entry                                  
+DATA WORK.FUNDOP_POSTINGS;                                                            
+	 SET WORK.FUNDOP_POSTINGS;                                                        
+                                                                                      
+	 // KEYCLASS in GLENTRY is empty for Standard Balance                             
+	 COLUMN CLASSENTRY TYPE=STRING;                                                   
+	 CLASSENTRY = "FUNDOP";                                                           
+RUN;                                                                                  
+                                                                                      
+// UNION of all the different balance/entries                                         
+DATA WORK.CONSOFUNDOPS_BALANCE;                                                       
+	 SET WORK.CONSO_BALANCES WORK.FUNDOP_POSTINGS;                                    
+RUN;                                                                                  
+                                                                                      
+// Debug : Display the result                                                                               
+// PROC PRINT DATA=WORK.CONSOFUNDOPS_BALANCE ; RUN;
+   
+// Create Empty Structure
+DATA ODIR.CONSOFUNDOPS_BALANCE;
+	 SET WORK.CONSOFUNDOPS_BALANCE;
+	 STOP;
+RUN;
+            
+    

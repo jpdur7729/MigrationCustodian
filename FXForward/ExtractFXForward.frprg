@@ -1,0 +1,47 @@
+// ------------------------------------------------------------------------------
+//                     Author    : eFront-BP2S
+//                     Time-stamp: "2018-09-26 14:00:54 jpdur"
+// ------------------------------------------------------------------------------
+
+LIBNAME ODIR ".";
+
+
+// Create the SQL query
+%LET SQLQUERY = %SQLQUERY + "select libelle as CFWDInstruName,fund.fund as FundContractor,'Fx Forward' as InstruType "; 
+%LET SQLQUERY = %SQLQUERY + ",admrole.name as Region "; 
+// %LET SQLQUERY = %SQLQUERY + "-- Contractor "; 
+// %LET SQLQUERY = %SQLQUERY + "--,ins.counterpart-- ,sfaaccount.name as Counterparty ";
+%LET SQLQUERY = %SQLQUERY + ",currhedgeissuedate as IssueDate,maturitydate as MaturityDate ";
+%LET SQLQUERY = %SQLQUERY + ",currhedgebuy as BuyAmount,currhedgebuycurr as BuyCcy ";
+%LET SQLQUERY = %SQLQUERY + ",currhedgesell as SellAmount,currhedgesellcurr as SellCcy ";
+%LET SQLQUERY = %SQLQUERY + ",currhedgesell/currhedgebuy as ContractRate ";
+// %LET SQLQUERY = %SQLQUERY + "-- Extra fields ";
+// %LET SQLQUERY = %SQLQUERY + "-- ,currhedgebuydaysperyear,currhedgeselldaysperyear, ";
+%LET SQLQUERY = %SQLQUERY + ",case instype.code ";
+%LET SQLQUERY = %SQLQUERY + "  when 'FWD' then 'Hedging' ";
+%LET SQLQUERY = %SQLQUERY + "  when 'FWDT' then 'Speculation' ";
+%LET SQLQUERY = %SQLQUERY + "end as TransacObjectives, ";
+%LET SQLQUERY = %SQLQUERY + "ins.daysperyear as DayBasis ";
+%LET SQLQUERY = %SQLQUERY + "from vcinvestmentins ins ";
+%LET SQLQUERY = %SQLQUERY + "join vcfund fund ";
+%LET SQLQUERY = %SQLQUERY + "on ins.fund = fund.iqid ";
+%LET SQLQUERY = %SQLQUERY + "join  vcinvestinstype instype ";
+%LET SQLQUERY = %SQLQUERY + "on investinstype = instype.iqid ";
+%LET SQLQUERY = %SQLQUERY + "join admrole ";
+%LET SQLQUERY = %SQLQUERY + "on ins.iqregionid = admrole.iqid ";
+%LET SQLQUERY = %SQLQUERY + "where instype.code in ('FWD','FWDT') ";
+// %LET SQLQUERY = %SQLQUERY + "-- eliminate the instruments for which the amounts is not defined ";
+%LET SQLQUERY = %SQLQUERY + "and coalesce(currhedgesell,0) <>0 and coalesce(currhedgebuy,0) <> 0.0 ";
+
+
+// Debug the SQL Query
+PROC PRINT ; PUT %SQLQUERY ; RUN ;
+
+// Create the Import Table
+PROC SQLIMPORT DATA=WORK.FXFORWARD_INSTRUMENTS SQL = %SQLQUERY;
+RUN;                                          
+                                              
+// Create and export the data into an XL spreadsheet
+PROC EXPORTEXCEL FILE="FXFORWARD.xls";        
+    TABLE=WORK.FXFORWARD_INSTRUMENTS SHEETNAME="FX Forward";  
+RUN;

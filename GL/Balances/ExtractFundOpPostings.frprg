@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-09-25 14:59:23 jpdur"
+//                     Time-stamp: "2018-09-25 15:06:44 jpdur"
 // ------------------------------------------------------------------------------
               
 // // // Default fund is Fund 1164
@@ -119,24 +119,18 @@ PROC MEANS DATA=WORK.FUNDOP_POSTINGS_DETAILS OUT=WORK.FUNDOP_POSTINGS ;
 	 SUM AMOUNT2 (LABEL="Amount2" NAME=AMOUNT2);
 RUN;
 
-// ------------------------------------------------------------------------------
-// We add the date as the report date in the consolidation of all these postings
-// ------------------------------------------------------------------------------
-DATA WORK.FUNDOP_POSTINGS;
-	SET WORK.FUNDOP_POSTINGS;
-
-	COLUMN GLDATE TYPE=DATE;
-
-	GLDATE = %DATE;
-RUN;
-
 // --------------------------------------------------------------------------------------------------------------
-// We filter out the accounts which are not class1 and the lines for which there are some balance to be migrated 
+// We add the date as the report date in the consolidation of all these postings
+// --------------------------------------------------------------------------------------------------------------
+// We filter out the accounts which are not class1 and the lines for which there are some balance to be migrated
 // --------------------------------------------------------------------------------------------------------------
 DATA WORK.FUNDOP_POSTINGS;
 	SET WORK.FUNDOP_POSTINGS (WHERE ACCOUNT_CLASS_NUMBER="1" AND (NZ(AMOUNT,0.0)<>0.0 or NZ(AMOUNT2,0.0)<>0.0));
-RUN;
 
+	COLUMN GLDATE TYPE=DATE;
+	GLDATE = %DATE;
+
+RUN;
 
 // Check the data obtained for the consolidation
 PROC PRINT DATA=WORK.FUNDOP_POSTINGS MAXROWS=10; RUN;
