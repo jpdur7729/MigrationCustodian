@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------------------
 //                     Author    : eFront-BP2S
-//                     Time-stamp: "2018-09-25 17:48:58 jpdur"
+//                     Time-stamp: "2018-09-26 16:12:55 jpdur"
 // ------------------------------------------------------------------------------
 
 // Reusing the standard CalcEngine functionalities
@@ -113,6 +113,7 @@ RUN;
 %LET SQLEXTRACT = %SQLEXTRACT + "where glchart.iqid like '%" & %IQID_CHART & "%' ";
 %LET SQLEXTRACT = %SQLEXTRACT + " and glentitychart.chart = glchart.iqid ";
 %LET SQLEXTRACT = %SQLEXTRACT + " and glentitychart.fund  = fund.iqid ";
+%LET SQLEXTRACT = %SQLEXTRACT + " and glentitychart.iqdeleted = 0 "; 
 
 // Create the temporary table
 PROC SQLIMPORT DATA=WORK.COMPLEMENTARY_COLUMNS SQL=%SQLEXTRACT;
@@ -121,16 +122,16 @@ RUN;
 // Add a few extra fields such as the reference date
 DATA WORK.COMPLEMENTARY_COLUMNS;
 	 SET WORK.COMPLEMENTARY_COLUMNS;
-                           
+
 	 COLUMN GLDATE TYPE=DATE;
-	 GLDATE = %DATE;       
-                           
-     OUTPUT;               
-RUN;                       
+	 GLDATE = %DATE;
+
+     OUTPUT;
+RUN;
 
 // Debug Extra Table
 // PROC PRINT DATA=WORK.COMPLEMENTARY_COLUMNS; RUN;
-   
+
 // Reformat the Opening Balance in order to have a set of data Ready to import
 DATA WORK.OPENING_BALANCES (RENAME=(TRANSAC_CURRENCY=TRANSACTIONCURRENCY));
 	 MERGE WORK.T_OPENING_BALANCES WORK.COMPLEMENTARY_COLUMNS;
@@ -205,9 +206,9 @@ DATA WORK.CONSO_BALANCES;
 	 SET WORK.CONSO_BALANCES (WHERE ROUND(NZ(AMOUNT,0),2)<>0 or ROUND(NZ(AMOUNT2,0),2)<>0) ;
                                                                                       
 	 // KEYCLASS in GLENTRY is empty for Standard Balance                             
-	 COLUMN CLASSENTRY TYPE=STRING;                                                   
-	 CLASSENTRY = "";                                                                 
-RUN;                                                                                  
+	 COLUMN CLASSENTRY TYPE=STRING;
+	 CLASSENTRY = "";
+RUN;
                                                                                       
 // Add the Keyclass for the different types of Entry                                  
 DATA WORK.FUNDOP_POSTINGS;                                                            
